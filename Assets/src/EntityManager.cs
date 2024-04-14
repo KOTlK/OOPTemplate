@@ -7,26 +7,34 @@ public class EntityManager : MonoBehaviour{
     public List<Entity>    DynamicEntities = new ();
     public int[]           RemoveQueue     = new int[128];
     public int[]           FreeEntities    = new int[128];
-    public int             EntitiesCount;
+    public int             MaxEntitiesCount;
     public int             FreeEntitiesCount;
     public int             EntitiesToRemoveCount;
     
+    public Entity CreateEntity(Entity prefab, Vector3 position){
+        return CreateEntity(prefab, position, Quaternion.identity, Vector3.one, null);
+    }
+    
     public Entity CreateEntity(Entity prefab, Vector3 position, Quaternion orientation, Vector3 scale){
+        return CreateEntity(prefab, position, orientation, scale, null);
+    }
+    
+    public Entity CreateEntity(Entity prefab, Vector3 position, Quaternion orientation, Vector3 scale, Transform parent){
         var id = -1;
         
         if(FreeEntitiesCount > 0){
             id = FreeEntities[--FreeEntitiesCount];
         }else{
-            id = EntitiesCount;
+            id = MaxEntitiesCount++;
         }
         
-        var obj = Instantiate(prefab, position, orientation);
+        var obj = Instantiate(prefab, position, orientation, parent);
         
-        if(EntitiesCount == Entities.Length){
-            Array.Resize(ref Entities, EntitiesCount << 1);
+        if(MaxEntitiesCount == Entities.Length){
+            Array.Resize(ref Entities, MaxEntitiesCount << 1);
         }
         
-        Entities[EntitiesCount++] = obj;
+        Entities[id] = obj;
         
         if((obj.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic){
             DynamicEntities.Add(obj);
@@ -36,6 +44,8 @@ public class EntityManager : MonoBehaviour{
         obj.Em          = this;
         obj.Alive       = true;
         
+        obj.OnCreate();
+        
         return obj;
     }
     
@@ -44,7 +54,11 @@ public class EntityManager : MonoBehaviour{
             Array.Resize(ref RemoveQueue, EntitiesToRemoveCount << 1);
         }
         
-        Entities[id].Alive = false;
+        try{
+            Entities[id].Alive = false;
+        }catch{
+            Debug.Log("Sfsfsdfsd");
+        }
         
         RemoveQueue[EntitiesToRemoveCount++] = id;
     }
@@ -56,15 +70,13 @@ public class EntityManager : MonoBehaviour{
             Array.Resize(ref FreeEntities, FreeEntitiesCount << 1);
         }
         
-        FreeEntities[FreeEntitiesCount++] = id;
-        Entities[id] = null;
-        EntitiesCount--;
-        
         if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic){
             DynamicEntities.Remove(entity);
         }
         
+        Entities[id] = null;
         entity.Destroy();
+        FreeEntities[FreeEntitiesCount++] = id;
     }
     
     public void Execute(){
@@ -75,5 +87,6 @@ public class EntityManager : MonoBehaviour{
         for(var i = 0; i < EntitiesToRemoveCount; ++i){
             DestroyEntityImmediate(RemoveQueue[i]);
         }
+        EntitiesToRemoveCount = 0;
     }
 }

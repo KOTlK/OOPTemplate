@@ -2,8 +2,8 @@ using UnityEngine;
 
 public enum EntityFlags
 {
-    Static,
-    Dynamic
+    Static  = 1 << 1,
+    Dynamic = 1 << 2
 }
 
 public enum EntityType
@@ -18,6 +18,7 @@ public class Entity : MonoBehaviour{
     public EntityType    Type;
     public EntityManager Em;
     
+    public virtual void OnCreate(){ }
     public virtual void Execute(){ }
     
     public virtual void Destroy(){
