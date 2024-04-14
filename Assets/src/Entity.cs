@@ -17,6 +17,15 @@ public class Entity : MonoBehaviour{
     public EntityFlags   Flags;
     public EntityType    Type;
     public EntityManager Em;
+    public bool          AutoBake;
+    
+    private void Awake(){
+        if(AutoBake){
+            if(Singleton<EntityManager>.Exist){
+                Singleton<EntityManager>.Instance.BakeEntity(this);
+            }
+        }
+    }
     
     public virtual void OnCreate(){ }
     public virtual void Execute(){ }

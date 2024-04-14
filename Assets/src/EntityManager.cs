@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 
 public class EntityManager : MonoBehaviour{
+    public List<Entity>    BakedEntities;
     public Entity[]        Entities        = new Entity[128];
     public List<Entity>    DynamicEntities = new ();
     public int[]           RemoveQueue     = new int[128];
@@ -10,6 +11,39 @@ public class EntityManager : MonoBehaviour{
     public int             MaxEntitiesCount;
     public int             FreeEntitiesCount;
     public int             EntitiesToRemoveCount;
+    
+    public void BakeEntities(){
+        for(var i = 0; i < BakedEntities.Count; ++i){
+            BakeEntity(BakedEntities[i]);
+        }
+        
+        BakedEntities.Clear();
+    }
+    
+    public void BakeEntity(Entity entity){
+        var id = -1;
+        if(FreeEntitiesCount > 0){
+            id = FreeEntities[--FreeEntitiesCount];
+        }else{
+            id = MaxEntitiesCount++;
+        }
+        
+        if(MaxEntitiesCount == Entities.Length){
+            Array.Resize(ref Entities, MaxEntitiesCount << 1);
+        }
+        
+        Entities[id] = entity;
+        
+        if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic){
+            DynamicEntities.Add(entity);
+        }
+        
+        entity.Id          = id;
+        entity.Em          = this;
+        entity.Alive       = true;
+        
+        entity.OnCreate();
+    }
     
     public Entity CreateEntity(Entity prefab, Vector3 position){
         return CreateEntity(prefab, position, Quaternion.identity, Vector3.one, null);
