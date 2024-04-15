@@ -5,6 +5,10 @@ public class PlayerInput : CharacterInput{
     public Transform Target;
     
     public override void Execute(){
+        if(Target == null){
+            return;
+        }
+        
         var h         = Input.GetAxis("Horizontal");
         var v         = Input.GetAxis("Vertical");
         var position  = MainCamera.WorldToScreenPoint(Target.position);

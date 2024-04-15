@@ -5,29 +5,26 @@ public class Character : Entity{
     public int                 Health;
     public CharacterInput      Input;
     public CharacterController CharacterController;
-    public Weapon              WeaponPrefab;
-    public Transform           WeaponSlot;
-    
-    private Weapon _weapon;
-    
-    public override void OnCreate(){
-        _weapon = (Weapon)Em.CreateEntity(WeaponPrefab, WeaponSlot.position, Quaternion.identity, Vector3.one, WeaponSlot);
-        _weapon.Owner = this;
-    }
+
+    public bool                IsDead => Health <= 0;
     
     public override void Execute(){
-        CharacterController.Move(Input.MoveDirection * Speed * Time.deltaTime);
-        
-        if(Input.Shooting){
-            _weapon.Shoot(new Vector3(Mathf.Sin(Input.LookDirection * Mathf.Deg2Rad), 
-                                      0, 
-                                      Mathf.Cos(Input.LookDirection * Mathf.Deg2Rad)));
-        }
-        
-        transform.rotation = Quaternion.AngleAxis(Input.LookDirection, Vector3.up);
+        Move(Input.MoveDirection * Speed);
+        Rotate(Quaternion.AngleAxis(Input.LookDirection, Vector3.up));
+    }
+    
+    public virtual void Move(Vector3 move){
+        CharacterController.SimpleMove(move);
+    }
+    
+    public virtual void Rotate(Quaternion rotation){
+        transform.rotation = rotation;
     }
     
     public void ApplyDamage(int amount){
         Health -= amount;
+        if(Health <= 0){
+            Em.DestroyEntity(Id);
+        }
     }
 }

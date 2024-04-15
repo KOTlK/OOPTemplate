@@ -101,8 +101,9 @@ MonoBehaviour:
   Flags: 4
   Type: 0
   Em: {fileID: 0}
+  AutoBake: 0
   Speed: 10
-  Size: 0.2
+  Size: 0.7
   TimeToLive: 1
   Damage: 10
   Mask:
