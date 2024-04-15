@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 public class EntityManager : MonoBehaviour{
     public List<Entity>    BakedEntities;
@@ -122,5 +123,10 @@ public class EntityManager : MonoBehaviour{
             DestroyEntityImmediate(RemoveQueue[i]);
         }
         EntitiesToRemoveCount = 0;
+    }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Entity GetEntity(int id){
+        return Entities[id];
     }
 }
