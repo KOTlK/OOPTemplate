@@ -46,15 +46,24 @@ public class EntityManager : MonoBehaviour{
         entity.OnCreate();
     }
     
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Entity CreateEntity(Entity prefab, Vector3 position){
         return CreateEntity(prefab, position, Quaternion.identity, Vector3.one, null);
     }
     
-    public Entity CreateEntity(Entity prefab, Vector3 position, Quaternion orientation, Vector3 scale){
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Entity CreateEntity(Entity prefab, 
+                               Vector3 position, 
+                               Quaternion orientation, 
+                               Vector3 scale){
         return CreateEntity(prefab, position, orientation, scale, null);
     }
     
-    public Entity CreateEntity(Entity prefab, Vector3 position, Quaternion orientation, Vector3 scale, Transform parent){
+    public Entity CreateEntity(Entity prefab, 
+                               Vector3 position, 
+                               Quaternion orientation, 
+                               Vector3 scale, 
+                               Transform parent){
         var id = -1;
         
         if(FreeEntitiesCount > 0){
@@ -84,36 +93,55 @@ public class EntityManager : MonoBehaviour{
         return obj;
     }
     
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void DestroyEntity(int id){
         if(EntitiesToRemoveCount == RemoveQueue.Length){
             Array.Resize(ref RemoveQueue, EntitiesToRemoveCount << 1);
         }
         
-        try{
-            Entities[id].Alive = false;
-        }catch{
-            Debug.Log("Sfsfsdfsd");
-        }
-        
+        Entities[id].Alive = false;
         RemoveQueue[EntitiesToRemoveCount++] = id;
     }
     
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void DestroyEntityImmediate(int id){
         var entity = Entities[id];
         
-        if(FreeEntitiesCount == FreeEntities.Length){
-            Array.Resize(ref FreeEntities, FreeEntitiesCount << 1);
+        if(entity != null){
+            if(FreeEntitiesCount == FreeEntities.Length){
+                Array.Resize(ref FreeEntities, FreeEntitiesCount << 1);
+            }
+            
+            if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic){
+                DynamicEntities.Remove(entity);
+            }
+            
+            Entities[id] = null;
+            entity.Destroy();
+            FreeEntities[FreeEntitiesCount++] = id;
         }
-        
-        if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic){
-            DynamicEntities.Remove(entity);
-        }
-        
-        Entities[id] = null;
-        entity.Destroy();
-        FreeEntities[FreeEntitiesCount++] = id;
     }
     
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void DestroyAllEntities(){
+        for(var i = 0; i < MaxEntitiesCount; ++i){
+            var entity = Entities[i];
+            if(entity != null){
+                if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic){
+                    DynamicEntities.Remove(entity);
+                }
+                
+                Entities[i] = null;
+                entity.Destroy();
+            }
+        }
+        
+        MaxEntitiesCount      = 0;
+        FreeEntitiesCount     = 0;
+        EntitiesToRemoveCount = 0;
+    }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Execute(){
         for(var i = 0; i < DynamicEntities.Count; ++i){
             DynamicEntities[i].Execute();

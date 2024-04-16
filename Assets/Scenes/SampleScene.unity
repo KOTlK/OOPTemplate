@@ -500,7 +500,7 @@ MonoBehaviour:
   MinBounds: {x: -9, y: 0, z: -9}
   WorldCenter: {x: 0, y: 0, z: 0}
   Prefab: {fileID: 8134109855589306714, guid: dfdc2a3d7ba73234ab4d34d087a82e3a, type: 3}
-  SpawnRate: 10
+  SpawnRate: 30
 --- !u!4 &754451834
 Transform:
   m_ObjectHideFlags: 0
