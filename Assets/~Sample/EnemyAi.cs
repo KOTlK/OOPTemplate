@@ -20,9 +20,10 @@ public class EnemyAi : CharacterInput{
             MoveDirection = direction.normalized;
             LookDirection = angle;
             
-            if(direction.magnitude < Enemy.AttackDistance){
-                Enemy.Attack();
-                Enemy.Em.DestroyEntity(Enemy.Id);
+            if(direction.magnitude < Enemy.AttackRadius){
+                if(Enemy.Attack()){
+                    Enemy.Em.DestroyEntity(Enemy.Id);
+                }
             }
         }
     }

@@ -132,10 +132,7 @@ MonoBehaviour:
   CharacterController: {fileID: 2077303974081807471}
   Target: 0
   Damage: 5
-  AttackRadius: 0.5
-  AttackDistance: 1.5
-  AttacksPerSecond: 2
-  AttackDelay: 0
+  AttackRadius: 1.5
   TargetsLayer:
     serializedVersion: 2
     m_Bits: 64
