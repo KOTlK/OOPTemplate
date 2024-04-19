@@ -1,60 +1,35 @@
 using System;
+using System.Collections.Generic;
 
-public class TaskRunner{
-    private Task[] _allTasks;
-    private int[]  _removedTasks;
-    private int    _tasksCount;
-    private int    _removedTasksCount;
-    
-    public TaskRunner(int startCount){
-        _allTasks          = new Task[startCount];
-        _removedTasks      = new int[startCount];
-        _tasksCount        = 0;
-        _removedTasksCount = 0;
-    }
-    
-    public void NewTask(Task task){
-        var index = _tasksCount++;
-        
-        if(_tasksCount == _allTasks.Length){
-            Array.Resize(ref _allTasks, _tasksCount << 1);
-        }
-        
-        _allTasks[index] = task;
-        task.Index               = index;
-        task.Over += EndTask;
-        task.OnCreate();
-    }
-    
-    public void EndTask(int index){
-        var task = _allTasks[index];
-        
-        task.Over -= EndTask;
+public enum TaskGroupType{
+    Gameplay,
+    GUI,
+    ExecuteAlways
+}
 
-        //remove and swapback
-        _allTasks[index] = _allTasks[--_tasksCount];
-        _allTasks[index].Index = index;
-        _allTasks[_tasksCount] = null;
+public class TaskRunner : Entity{
+    private Dictionary<TaskGroupType, TaskGroup> _groups = new();
+    
+    public void StartTask(TaskGroupType group, Task task){
+        task.Group = group;
         
-        if(_tasksCount > 0){ 
-            if(_removedTasksCount == _removedTasks.Length){
-                Array.Resize(ref _removedTasks, _removedTasksCount << 1);
-            }
-            
-            _removedTasks[_removedTasksCount++] = index;
+        if(_groups.ContainsKey(group)){
+            _groups[group].NewTask(task);
+        }else{
+            _groups.Add(group, new TaskGroup(30));
+            _groups[group].NewTask(task);
         }
-        
-        task.OnOver();
     }
     
-    public void RunTasks(){
-        for(var i = 0; i < _tasksCount; ++i){
-            _allTasks[i].Run();
-        }
-        
-        //iterate through all tasks that were swapped back and execute it
-        while(_removedTasksCount > 0){
-            _allTasks[--_removedTasksCount].Run();
-        }
+    public void EndTask(TaskGroupType group, int index){
+        _groups[group].EndTask(index);
+    }
+    
+    public void RunTaskGroup(TaskGroupType group){
+        _groups[group].RunTasks();
+    }
+    
+    public override void Execute(){
+        RunTaskGroup(TaskGroupType.ExecuteAlways);
     }
 }

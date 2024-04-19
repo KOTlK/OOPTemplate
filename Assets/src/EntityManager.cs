@@ -12,7 +12,7 @@ public class EntityManager : MonoBehaviour{
     public int             MaxEntitiesCount;
     public int             FreeEntitiesCount;
     public int             EntitiesToRemoveCount;
-    
+        
     public void BakeEntities(){
         for(var i = 0; i < BakedEntities.Count; ++i){
             BakeEntity(BakedEntities[i]);

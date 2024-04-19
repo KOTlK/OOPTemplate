@@ -1,13 +1,17 @@
 using UnityEngine;
+using System;
 
+[Flags]
 public enum EntityFlags
 {
+    None    = 0,
     Static  = 1 << 1,
     Dynamic = 1 << 2
 }
 
 public enum EntityType
 {
+    Utility,
     // types goes here
 }
 
