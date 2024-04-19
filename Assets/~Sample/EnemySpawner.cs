@@ -1,6 +1,7 @@
 using UnityEngine;
 
-public class EnemySpawner : Entity{
+[System.Serializable]
+public class EnemySpawner : Task{
     public Vector3 MaxBounds;
     public Vector3 MinBounds;
     public Vector3 WorldCenter = Vector3.zero;
@@ -13,11 +14,12 @@ public class EnemySpawner : Entity{
         _delay = 60f / SpawnRate;
     }
 
-    public override void Execute(){
+    public override void Run(){
+        var em = Singleton<EntityManager>.Instance;
         _delay += Time.deltaTime;
         
         if(_delay >= 60f / SpawnRate){
-            Em.CreateEntity(Prefab, GetRandomPosition());
+            em.CreateEntity(Prefab, GetRandomPosition());
             _delay = 0f;
         }
     }
