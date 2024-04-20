@@ -11,7 +11,7 @@ public class WaitForSecondsTask : Task{
         Start -= Time.deltaTime;
         
         if(Start <= 0){
-            Over(Index);
+            Stop();
         }
     }
 }
