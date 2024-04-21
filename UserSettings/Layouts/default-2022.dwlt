@@ -139,7 +139,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 0
-    width: 1178
+    width: 1520
     height: 947
   m_MinSize: {x: 300, y: 100}
   m_MaxSize: {x: 24288, y: 16192}
@@ -165,7 +165,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 0
-    width: 1178
+    width: 1520
     height: 580
   m_MinSize: {x: 300, y: 50}
   m_MaxSize: {x: 24288, y: 8096}
@@ -188,7 +188,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 0
-    width: 176
+    width: 223
     height: 580
   m_MinSize: {x: 201, y: 221}
   m_MaxSize: {x: 4001, y: 4021}
@@ -212,9 +212,9 @@ MonoBehaviour:
   m_Children: []
   m_Position:
     serializedVersion: 2
-    x: 176
+    x: 223
     y: 0
-    width: 421
+    width: 639
     height: 580
   m_MinSize: {x: 202, y: 221}
   m_MaxSize: {x: 4002, y: 4021}
@@ -239,9 +239,9 @@ MonoBehaviour:
   m_Children: []
   m_Position:
     serializedVersion: 2
-    x: 597
+    x: 862
     y: 0
-    width: 581
+    width: 658
     height: 580
   m_MinSize: {x: 202, y: 221}
   m_MaxSize: {x: 4002, y: 4021}
@@ -267,7 +267,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 580
-    width: 1178
+    width: 1520
     height: 367
   m_MinSize: {x: 101, y: 121}
   m_MaxSize: {x: 4001, y: 4021}
@@ -292,9 +292,9 @@ MonoBehaviour:
   m_Children: []
   m_Position:
     serializedVersion: 2
-    x: 1178
+    x: 1520
     y: 0
-    width: 742
+    width: 400
     height: 947
   m_MinSize: {x: 101, y: 121}
   m_MaxSize: {x: 4001, y: 4021}
@@ -449,9 +449,9 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 3098
+    x: 3440
     y: 73
-    width: 741
+    width: 399
     height: 926
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -548,7 +548,7 @@ MonoBehaviour:
       name: ProjectTemplate
       fullName: ProjectTemplate
       resultStatus: 1
-      duration: 0.0940061
+      duration: 0.0960389
       messages: 
       output: 
       stacktrace: 
@@ -564,7 +564,7 @@ MonoBehaviour:
       name: Tests.dll
       fullName: D:/Unity/Projects/ProjectTemplate/Library/ScriptAssemblies/Tests.dll
       resultStatus: 1
-      duration: 0.0466059
+      duration: 0.047937
       messages: 
       output: 
       stacktrace: 
@@ -580,7 +580,7 @@ MonoBehaviour:
       name: TasksTest
       fullName: TasksTest
       resultStatus: 1
-      duration: 0.0366244
+      duration: 0.0379446
       messages: 
       output: 
       stacktrace: 
@@ -596,7 +596,7 @@ MonoBehaviour:
       name: StartAndOverTasksInCorrectOrder
       fullName: TasksTest.StartAndOverTasksInCorrectOrder
       resultStatus: 1
-      duration: 0.0197115
+      duration: 0.0202841
       messages: 
       output: 
       stacktrace: 
@@ -613,7 +613,7 @@ MonoBehaviour:
       name: WrappedTasksWillBeStopped
       fullName: TasksTest.WrappedTasksWillBeStopped
       resultStatus: 1
-      duration: 0.0007157
+      duration: 0.0017611
       messages: 
       output: 
       stacktrace: 
@@ -680,7 +680,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 1920
     y: 73
-    width: 175
+    width: 222
     height: 559
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -697,7 +697,7 @@ MonoBehaviour:
       scrollPos: {x: 0, y: 0}
       m_SelectedIDs: 
       m_LastClickedID: 0
-      m_ExpandedIDs: b493ffffb498ffff42a1ffffb4a6ffff78abffffccb2ffffeab7ffffaebdffff20c5fffffec6ffff64ccffff7ee9ffff10f5ffff26fbffff
+      m_ExpandedIDs: dccdffff26ddffffecf4ffff42f5ffff02fbffff
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -742,9 +742,9 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 2096
+    x: 2143
     y: 73
-    width: 419
+    width: 637
     height: 559
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -1243,9 +1243,9 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 2517
+    x: 2782
     y: 73
-    width: 579
+    width: 656
     height: 559
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -1263,7 +1263,7 @@ MonoBehaviour:
   m_ShowGizmos: 0
   m_TargetDisplay: 0
   m_ClearColor: {r: 0, g: 0, b: 0, a: 0}
-  m_TargetSize: {x: 579, y: 362}
+  m_TargetSize: {x: 656, y: 410}
   m_TextureFilterMode: 0
   m_TextureHideFlags: 61
   m_RenderIMGUI: 1
@@ -1278,10 +1278,10 @@ MonoBehaviour:
     m_VRangeLocked: 0
     hZoomLockedByDefault: 0
     vZoomLockedByDefault: 0
-    m_HBaseRangeMin: -289.5
-    m_HBaseRangeMax: 289.5
-    m_VBaseRangeMin: -181
-    m_VBaseRangeMax: 181
+    m_HBaseRangeMin: -328
+    m_HBaseRangeMax: 328
+    m_VBaseRangeMin: -205
+    m_VBaseRangeMax: 205
     m_HAllowExceedBaseRangeMin: 1
     m_HAllowExceedBaseRangeMax: 1
     m_VAllowExceedBaseRangeMin: 1
@@ -1299,23 +1299,23 @@ MonoBehaviour:
       serializedVersion: 2
       x: 0
       y: 21
-      width: 579
+      width: 656
       height: 538
     m_Scale: {x: 1, y: 1}
-    m_Translation: {x: 289.5, y: 269}
+    m_Translation: {x: 328, y: 269}
     m_MarginLeft: 0
     m_MarginRight: 0
     m_MarginTop: 0
     m_MarginBottom: 0
     m_LastShownAreaInsideMargins:
       serializedVersion: 2
-      x: -289.5
+      x: -328
       y: -269
-      width: 579
+      width: 656
       height: 538
     m_MinimalGUI: 1
   m_defaultScale: 1
-  m_LastWindowPixelSize: {x: 579, y: 559}
+  m_LastWindowPixelSize: {x: 656, y: 559}
   m_ClearInEditMode: 1
   m_NoCameraWarning: 1
   m_LowResolutionForAspectRatios: 01000000000000000000
@@ -1384,7 +1384,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: ca5a0000
     m_LastClickedID: 23242
-    m_ExpandedIDs: 0000000048590000
+    m_ExpandedIDs: 000000004e590000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1412,7 +1412,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: 0000000048590000
+    m_ExpandedIDs: 000000004e590000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1491,7 +1491,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 1920
     y: 653
-    width: 1177
+    width: 1519
     height: 346
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -1524,9 +1524,9 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 3364
+    x: 3440
     y: 73
-    width: 475
+    width: 399
     height: 926
   m_SerializedDataModeController:
     m_DataMode: 0

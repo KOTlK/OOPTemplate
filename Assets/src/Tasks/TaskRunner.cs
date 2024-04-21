@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using static UnityEngine.Assertions.Assert;
 
 public enum TaskGroupType{
     Gameplay,
@@ -7,29 +9,33 @@ public enum TaskGroupType{
     ExecuteAlways
 }
 
-public class TaskRunner : Entity{
+public class TaskRunner{
     private Dictionary<TaskGroupType, TaskGroup> _groups = new();
     
-    public void StartTask(TaskGroupType group, Task task){
-        task.Group = group;
+    public int TasksCount => _groups.Sum(group => group.Value.TasksCount);
+    
+    public TaskRunner(){
+        var types = Enum.GetValues(typeof(TaskGroupType));
         
-        if(_groups.ContainsKey(group)){
-            _groups[group].NewTask(task);
-        }else{
-            _groups.Add(group, new TaskGroup(30));
-            _groups[group].NewTask(task);
+        foreach(var type in types){
+            _groups.Add((TaskGroupType)type, new TaskGroup(30));
         }
     }
     
+    public void StartTask(TaskGroupType group, Task task){
+        IsTrue(task != null);
+        IsTrue(_groups.ContainsKey(group));
+        task.Group = group;
+        _groups[group].NewTask(task);
+    }
+    
     public void EndTask(TaskGroupType group, int index){
+        IsTrue(_groups.ContainsKey(group));
         _groups[group].EndTask(index);
     }
     
     public void RunTaskGroup(TaskGroupType group){
+        IsTrue(_groups.ContainsKey(group));
         _groups[group].RunTasks();
-    }
-    
-    public override void Execute(){
-        RunTaskGroup(TaskGroupType.ExecuteAlways);
     }
 }

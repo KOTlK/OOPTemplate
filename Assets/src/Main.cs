@@ -5,6 +5,7 @@ public class Main : MonoBehaviour{
     public TaskRunner    TaskRunner;
     
     private void Awake(){
+        TaskRunner = new TaskRunner();
         Singleton<EntityManager>.Create(EntityManager);
         Singleton<TaskRunner>.Create(TaskRunner);
     }
@@ -14,6 +15,6 @@ public class Main : MonoBehaviour{
     }
     
     private void Update(){
-        
+        TaskRunner.RunTaskGroup(TaskGroupType.ExecuteAlways);
     }
 }

@@ -9,10 +9,8 @@ public class TasksTest
     public void StartAndOverTasksInCorrectOrder(){
         var tasksCount         = 100;
         var maxExecutionsCount = 100;
-        var gameobject         = new GameObject();
         var tasksDict          = new Dictionary<SampleTask, int>();
-        gameobject.AddComponent<TaskRunner>();
-        var runner = gameobject.GetComponent<TaskRunner>();
+        var runner = new TaskRunner();
         
         for(var i = 0; i < tasksCount; ++i){
             var exCount = Random.Range(0, maxExecutionsCount);
@@ -35,9 +33,7 @@ public class TasksTest
     
     [Test]
     public void WrappedTasksWillBeStopped(){
-        var gameobject = new GameObject();
-        gameobject.AddComponent<TaskRunner>();
-        var runner = gameobject.GetComponent<TaskRunner>();
+        var runner = new TaskRunner();
         
         var task1 = new WrappedTask();
         var task2 = new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask()))))))))))))))))))))))))))))))))))))))))));
@@ -50,6 +46,7 @@ public class TasksTest
         
         Assert.True(task1.IsOver);
         Assert.True(task2.IsOver);
+        Assert.True(runner.TasksCount == 0);
     }
 }
 

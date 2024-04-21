@@ -3,22 +3,22 @@ using System.Runtime.CompilerServices;
 using static UnityEngine.Assertions.Assert;
 
 public class TaskGroup{
-    private Task[] _allTasks;
-    private int    _tasksCount;
+    public Task[] AllTasks;
+    public int    TasksCount;
     
     public TaskGroup(int startCount){
-        _allTasks          = new Task[startCount];
-        _tasksCount        = 0;
+        AllTasks          = new Task[startCount];
+        TasksCount        = 0;
     }
     
     public void NewTask(Task task){
-        var index = _tasksCount++;
+        var index = TasksCount++;
         
-        if(_tasksCount == _allTasks.Length){
-            Array.Resize(ref _allTasks, _tasksCount << 1);
+        if(TasksCount == AllTasks.Length){
+            Array.Resize(ref AllTasks, TasksCount << 1);
         }
         
-        _allTasks[index] = task;
+        AllTasks[index] = task;
         task.Index       = index;
         task.IsOver      = false;
         task.OnCreate();
@@ -26,21 +26,21 @@ public class TaskGroup{
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EndTask(int index){
-        IsTrue(_allTasks[index] != null);
-        _allTasks[index].Stop();
+        IsTrue(AllTasks[index] != null);
+        AllTasks[index].Stop();
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void RunTasks(){
-        for(var i = 0; i < _tasksCount; ++i){
-            IsTrue(_allTasks[i] != null);
+        for(var i = 0; i < TasksCount; ++i){
+            IsTrue(AllTasks[i] != null);
 
-            if(_allTasks[i].IsOver){
+            if(AllTasks[i].IsOver){
                 RemoveAndSwapBack(i);
                 i--;
             }else{
-                _allTasks[i].Run();
-                if(_allTasks[i].IsOver){
+                AllTasks[i].Run();
+                if(AllTasks[i].IsOver){
                     RemoveAndSwapBack(i);
                     i--;
                 }
@@ -50,11 +50,11 @@ public class TaskGroup{
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void RemoveAndSwapBack(int i){
-        IsTrue(_allTasks[_tasksCount - 1] != null);
-        var task = _allTasks[i];
-        _allTasks[i] = _allTasks[--_tasksCount];
-        _allTasks[i].Index = i;
-        _allTasks[_tasksCount] = null;
+        IsTrue(AllTasks[TasksCount - 1] != null);
+        var task = AllTasks[i];
+        AllTasks[i] = AllTasks[--TasksCount];
+        AllTasks[i].Index = i;
+        AllTasks[TasksCount] = null;
         task.OnOver();
     }
 }
