@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1920
     height: 997
   m_ShowMode: 4
-  m_Title: Game
+  m_Title: Inspector
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -139,7 +139,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 0
-    width: 1520
+    width: 1209
     height: 947
   m_MinSize: {x: 300, y: 100}
   m_MaxSize: {x: 24288, y: 16192}
@@ -165,7 +165,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 0
-    width: 1520
+    width: 1209
     height: 580
   m_MinSize: {x: 300, y: 50}
   m_MaxSize: {x: 24288, y: 8096}
@@ -188,7 +188,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 0
-    width: 223
+    width: 174
     height: 580
   m_MinSize: {x: 201, y: 221}
   m_MaxSize: {x: 4001, y: 4021}
@@ -212,9 +212,9 @@ MonoBehaviour:
   m_Children: []
   m_Position:
     serializedVersion: 2
-    x: 223
+    x: 174
     y: 0
-    width: 639
+    width: 509
     height: 580
   m_MinSize: {x: 202, y: 221}
   m_MaxSize: {x: 4002, y: 4021}
@@ -239,9 +239,9 @@ MonoBehaviour:
   m_Children: []
   m_Position:
     serializedVersion: 2
-    x: 862
+    x: 683
     y: 0
-    width: 658
+    width: 526
     height: 580
   m_MinSize: {x: 202, y: 221}
   m_MaxSize: {x: 4002, y: 4021}
@@ -267,7 +267,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 580
-    width: 1520
+    width: 1209
     height: 367
   m_MinSize: {x: 101, y: 121}
   m_MaxSize: {x: 4001, y: 4021}
@@ -287,24 +287,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 1
   m_Script: {fileID: 12006, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: TestRunnerWindow
+  m_Name: InspectorWindow
   m_EditorClassIdentifier: 
   m_Children: []
   m_Position:
     serializedVersion: 2
-    x: 1520
+    x: 1209
     y: 0
-    width: 400
+    width: 711
     height: 947
-  m_MinSize: {x: 101, y: 121}
+  m_MinSize: {x: 276, y: 71}
   m_MaxSize: {x: 4001, y: 4021}
-  m_ActualView: {fileID: 15}
+  m_ActualView: {fileID: 21}
   m_Panes:
   - {fileID: 21}
   - {fileID: 15}
   - {fileID: 13}
-  m_Selected: 1
-  m_LastSelected: 0
+  m_Selected: 0
+  m_LastSelected: 2
 --- !u!114 &13
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -326,9 +326,9 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 3336
+    x: 3129
     y: 73
-    width: 503
+    width: 710
     height: 926
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -449,9 +449,9 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 3440
+    x: 3129
     y: 73
-    width: 399
+    width: 710
     height: 926
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -548,7 +548,7 @@ MonoBehaviour:
       name: ProjectTemplate
       fullName: ProjectTemplate
       resultStatus: 1
-      duration: 0.0960389
+      duration: 0.081685
       messages: 
       output: 
       stacktrace: 
@@ -564,7 +564,7 @@ MonoBehaviour:
       name: Tests.dll
       fullName: D:/Unity/Projects/ProjectTemplate/Library/ScriptAssemblies/Tests.dll
       resultStatus: 1
-      duration: 0.047937
+      duration: 0.0423772
       messages: 
       output: 
       stacktrace: 
@@ -576,11 +576,87 @@ MonoBehaviour:
       parentId: 1000
       parentUniqueId: '[ProjectTemplate][suite]'
     - id: 1001
+      uniqueId: Tests.dll/[Tests][EventsTests][suite]
+      name: EventsTests
+      fullName: EventsTests
+      resultStatus: 1
+      duration: 0.011394
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1006
+      parentUniqueId: '[Tests][D:/Unity/Projects/ProjectTemplate/Library/ScriptAssemblies/Tests.dll][suite]'
+    - id: 1002
+      uniqueId: Tests.dll/EventsTests/[Tests][EventsTests.CreateExecuteEventAndClear]
+      name: CreateExecuteEventAndClear
+      fullName: EventsTests.CreateExecuteEventAndClear
+      resultStatus: 1
+      duration: 0.000162
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: Tests.dll/[Tests][EventsTests][suite]
+    - id: 1004
+      uniqueId: Tests.dll/EventsTests/[Tests][EventsTests.PerformaceTest]
+      name: PerformaceTest
+      fullName: EventsTests.PerformaceTest
+      resultStatus: 1
+      duration: 0.0053861
+      messages: 
+      output: 'Initialization: 0ms
+
+        Raising 10000 identical Events: 3ms
+
+        Handling
+        10000 identical Events: 0ms
+
+        10000, 100000
+
+'
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: Tests.dll/[Tests][EventsTests][suite]
+    - id: 1003
+      uniqueId: Tests.dll/EventsTests/[Tests][EventsTests.ResizeAndSaveData]
+      name: ResizeAndSaveData
+      fullName: EventsTests.ResizeAndSaveData
+      resultStatus: 1
+      duration: 0.0001236
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: Tests.dll/[Tests][EventsTests][suite]
+    - id: 1001
       uniqueId: Tests.dll/[Tests][TasksTest][suite]
       name: TasksTest
       fullName: TasksTest
       resultStatus: 1
-      duration: 0.0379446
+      duration: 0.0190303
       messages: 
       output: 
       stacktrace: 
@@ -596,7 +672,7 @@ MonoBehaviour:
       name: StartAndOverTasksInCorrectOrder
       fullName: TasksTest.StartAndOverTasksInCorrectOrder
       resultStatus: 1
-      duration: 0.0202841
+      duration: 0.0014839
       messages: 
       output: 
       stacktrace: 
@@ -613,7 +689,7 @@ MonoBehaviour:
       name: WrappedTasksWillBeStopped
       fullName: TasksTest.WrappedTasksWillBeStopped
       resultStatus: 1
-      duration: 0.0017611
+      duration: 0.0001263
       messages: 
       output: 
       stacktrace: 
@@ -625,13 +701,25 @@ MonoBehaviour:
       - Uncategorized
       parentId: 1001
       parentUniqueId: Tests.dll/[Tests][TasksTest][suite]
-    m_ResultText: StartAndOverTasksInCorrectOrder (0.020s)
+    m_ResultText: 'PerformaceTest (0.005s)
+
+      ---
+
+      Initialization: 0ms
+
+      Raising
+      10000 identical Events: 3ms
+
+      Handling 10000 identical Events: 0ms
+
+      10000,
+      100000'
     m_ResultStacktrace: 
     m_TestListState:
       scrollPos: {x: 0, y: 0}
-      m_SelectedIDs: 2e3c4675
-      m_LastClickedID: 1967537198
-      m_ExpandedIDs: b8dc6f87170b8a9129516892d881bfcaf02d55ece557abf7d3643f09b3bedd47b63a6168ffffff7f
+      m_SelectedIDs: 1652a5e5
+      m_LastClickedID: -442150378
+      m_ExpandedIDs: b8dc6f87170b8a9129516892d881bfcaf02d55ece557abf7d3643f098f8d9534b3bedd47b63a6168ffffff7f
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -680,7 +768,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 1920
     y: 73
-    width: 222
+    width: 173
     height: 559
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -695,9 +783,9 @@ MonoBehaviour:
   m_SceneHierarchy:
     m_TreeViewState:
       scrollPos: {x: 0, y: 0}
-      m_SelectedIDs: 
-      m_LastClickedID: 0
-      m_ExpandedIDs: dccdffff26ddffffecf4ffff42f5ffff02fbffff
+      m_SelectedIDs: 425e0000
+      m_LastClickedID: 24130
+      m_ExpandedIDs: 2443ffffe243ffff2246ffff4a4bffffd250ffffe858ffffb260ffff1673ffff7c78ffffba7effffca80ffff148effffea94ffff8e99ffff12a2ffff22a7ffff1afbffff
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -742,9 +830,9 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 2143
+    x: 2094
     y: 73
-    width: 637
+    width: 507
     height: 559
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -1243,9 +1331,9 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 2782
+    x: 2603
     y: 73
-    width: 656
+    width: 524
     height: 559
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -1263,7 +1351,7 @@ MonoBehaviour:
   m_ShowGizmos: 0
   m_TargetDisplay: 0
   m_ClearColor: {r: 0, g: 0, b: 0, a: 0}
-  m_TargetSize: {x: 656, y: 410}
+  m_TargetSize: {x: 524, y: 328}
   m_TextureFilterMode: 0
   m_TextureHideFlags: 61
   m_RenderIMGUI: 1
@@ -1278,10 +1366,10 @@ MonoBehaviour:
     m_VRangeLocked: 0
     hZoomLockedByDefault: 0
     vZoomLockedByDefault: 0
-    m_HBaseRangeMin: -328
-    m_HBaseRangeMax: 328
-    m_VBaseRangeMin: -205
-    m_VBaseRangeMax: 205
+    m_HBaseRangeMin: -262
+    m_HBaseRangeMax: 262
+    m_VBaseRangeMin: -164
+    m_VBaseRangeMax: 164
     m_HAllowExceedBaseRangeMin: 1
     m_HAllowExceedBaseRangeMax: 1
     m_VAllowExceedBaseRangeMin: 1
@@ -1299,23 +1387,23 @@ MonoBehaviour:
       serializedVersion: 2
       x: 0
       y: 21
-      width: 656
+      width: 524
       height: 538
     m_Scale: {x: 1, y: 1}
-    m_Translation: {x: 328, y: 269}
+    m_Translation: {x: 262, y: 269}
     m_MarginLeft: 0
     m_MarginRight: 0
     m_MarginTop: 0
     m_MarginBottom: 0
     m_LastShownAreaInsideMargins:
       serializedVersion: 2
-      x: -328
+      x: -262
       y: -269
-      width: 656
+      width: 524
       height: 538
     m_MinimalGUI: 1
   m_defaultScale: 1
-  m_LastWindowPixelSize: {x: 656, y: 559}
+  m_LastWindowPixelSize: {x: 524, y: 559}
   m_ClearInEditMode: 1
   m_NoCameraWarning: 1
   m_LowResolutionForAspectRatios: 01000000000000000000
@@ -1344,7 +1432,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 1920
     y: 653
-    width: 1443
+    width: 1519
     height: 346
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -1367,7 +1455,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets/Tests
+    - Assets/src
     m_Globs: []
     m_OriginalText: 
     m_ImportLogFlags: 0
@@ -1375,16 +1463,16 @@ MonoBehaviour:
   m_ViewMode: 1
   m_StartGridSize: 64
   m_LastFolders:
-  - Assets/Tests
+  - Assets/src
   m_LastFoldersGridSize: -1
   m_LastProjectPath: D:\Unity\Projects\ProjectTemplate
   m_LockTracker:
     m_IsLocked: 0
   m_FolderTreeState:
     scrollPos: {x: 0, y: 0}
-    m_SelectedIDs: ca5a0000
-    m_LastClickedID: 23242
-    m_ExpandedIDs: 000000004e590000
+    m_SelectedIDs: d45a0000
+    m_LastClickedID: 23252
+    m_ExpandedIDs: 000000004e59000000ca9a3b
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1437,8 +1525,8 @@ MonoBehaviour:
       m_Icon: {fileID: 0}
       m_ResourceFile: 
   m_ListAreaState:
-    m_SelectedInstanceIDs: d85a0000
-    m_LastClickedInstanceID: 23256
+    m_SelectedInstanceIDs: de5a0000
+    m_LastClickedInstanceID: 23262
     m_HadKeyboardFocusLastEvent: 1
     m_ExpandedInstanceIDs: c62300000c7e00005270000010700000f8710000
     m_RenameOverlay:
@@ -1491,7 +1579,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 1920
     y: 653
-    width: 1519
+    width: 1208
     height: 346
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -1524,9 +1612,9 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 3440
+    x: 3129
     y: 73
-    width: 399
+    width: 710
     height: 926
   m_SerializedDataModeController:
     m_DataMode: 0
