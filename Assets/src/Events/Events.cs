@@ -60,13 +60,10 @@ public unsafe class EventData{
     }
 }
 
-public interface IEventHandler{
-    void HandleEvents(EventData events);
-}
-
 public class Events : IDisposable{
+    public delegate void EventHandler(EventData events);
     public Dictionary<Type, EventData>           AllEvents = new();
-    public Dictionary<Type, List<IEventHandler>> Handlers = new();
+    public Dictionary<Type, EventHandler>        Handlers = new();
     
     private readonly int _initialCapacity = 30;
     
@@ -95,32 +92,30 @@ public class Events : IDisposable{
     where T : unmanaged{
         var type = typeof(T);
         
-        IsTrue(Handlers.ContainsKey(type));
-        IsTrue(AllEvents.ContainsKey(type));
-        
-        foreach(var handler in Handlers[type]){
-            handler.HandleEvents(AllEvents[type]);
+        if(AllEvents.ContainsKey(type)){
+            IsTrue(Handlers.ContainsKey(type));
+            Handlers[type].Invoke(AllEvents[type]);
+            AllEvents[type].Clear();
         }
-        AllEvents[type].Clear();
     }
     
-    public void AddHandler<T>(IEventHandler handler)
+    public void AddHandler<T>(EventHandler handler)
     where T : unmanaged{
         var type = typeof(T);
         if(!Handlers.ContainsKey(type)){
-            Handlers.Add(type, new List<IEventHandler>());
+            Handlers.Add(type, delegate{});
         }
         
-        Handlers[typeof(T)].Add(handler);
+        Handlers[typeof(T)] += handler;
     }
     
-    public void RemoveHandler<T>(IEventHandler handler)
+    public void RemoveHandler<T>(EventHandler handler)
     where T : unmanaged{
         var type = typeof(T);
         
         IsTrue(Handlers.ContainsKey(type));
         
-        Handlers[type].Remove(handler);
+        Handlers[type] -= handler;
     }
     
     public void Dispose(){

@@ -9,7 +9,7 @@ public class EventsTests{
     public void CreateExecuteEventAndClear(){
         var events  = new Events();
         var handler = new SampleEventHandler();
-        events.AddHandler<SampleEvent>(handler);
+        events.AddHandler<SampleEvent>(handler.HandleEvents);
         
         events.RaiseEvent<SampleEvent>(new SampleEvent{SomeData = 10});
         
@@ -25,7 +25,6 @@ public class EventsTests{
     [Test]
     public void ResizeAndSaveData(){
         var events  = new Events(2);
-        var handler = new SampleEventHandler();
         
         events.RaiseEvent<SampleEvent>(new SampleEvent{SomeData = 10});
         events.RaiseEvent<SampleEvent>(new SampleEvent{SomeData = 11});
@@ -45,10 +44,10 @@ public class EventsTests{
         sw.Start();
         var events  = new Events();
         var handler = new SampleEventHandler();
-        events.AddHandler<SampleEvent>(handler);
+        events.AddHandler<SampleEvent>(handler.HandleEvents);
         sw.Stop();
         
-        Debug.Log($"Initialization: {sw.ElapsedMilliseconds.ToString()}ms");
+        Debug.Log($"Initialization: {sw.ElapsedTicks.ToString()} ticks");
         
         sw.Restart();
         
@@ -59,14 +58,14 @@ public class EventsTests{
         }
         sw.Stop();
         
-        Debug.Log($"Raising {eventsCount} identical Events: {sw.ElapsedMilliseconds.ToString()}ms");
+        Debug.Log($"Raising {eventsCount} identical Events: {sw.ElapsedTicks.ToString()} ticks");
         
         sw.Restart();
         
         events.HandleEvents<SampleEvent>();
         sw.Stop();
         
-        Debug.Log($"Handling {eventsCount} identical Events: {sw.ElapsedMilliseconds.ToString()}ms");
+        Debug.Log($"Handling {eventsCount} identical Events: {sw.ElapsedTicks.ToString()} ticks");
         
         Debug.Log($"{handler.EventsCount}, {handler.TotalDataSum}");
         
@@ -78,7 +77,7 @@ public struct SampleEvent{
     public int SomeData;
 }
 
-public class SampleEventHandler : IEventHandler{
+public class SampleEventHandler{
     public int EventsCount;
     public int TotalDataSum;
     
