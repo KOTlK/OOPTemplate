@@ -1,11 +1,13 @@
 using UnityEngine;
 
 public class Main : MonoBehaviour{
+    public TextAsset     VarsAsset;
     public EntityManager EntityManager;
     public TaskRunner    TaskRunner;
     public Events        Events;
     
     private void Awake(){
+        Vars.ParseVars(VarsAsset);
         TaskRunner = new TaskRunner();
         Events     = new Events();
         

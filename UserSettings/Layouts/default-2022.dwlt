@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1920
     height: 997
   m_ShowMode: 4
-  m_Title: Inspector
+  m_Title: Game
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -119,7 +119,7 @@ MonoBehaviour:
   m_MinSize: {x: 400, y: 100}
   m_MaxSize: {x: 32384, y: 16192}
   vertical: 0
-  controlID: 48
+  controlID: 228
 --- !u!114 &6
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -304,7 +304,7 @@ MonoBehaviour:
   - {fileID: 15}
   - {fileID: 13}
   m_Selected: 0
-  m_LastSelected: 2
+  m_LastSelected: 1
 --- !u!114 &13
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -548,7 +548,7 @@ MonoBehaviour:
       name: ProjectTemplate
       fullName: ProjectTemplate
       resultStatus: 1
-      duration: 0.081685
+      duration: 0.1107811
       messages: 
       output: 
       stacktrace: 
@@ -564,7 +564,7 @@ MonoBehaviour:
       name: Tests.dll
       fullName: D:/Unity/Projects/ProjectTemplate/Library/ScriptAssemblies/Tests.dll
       resultStatus: 1
-      duration: 0.0423772
+      duration: 0.0701717
       messages: 
       output: 
       stacktrace: 
@@ -580,7 +580,7 @@ MonoBehaviour:
       name: EventsTests
       fullName: EventsTests
       resultStatus: 1
-      duration: 0.011394
+      duration: 0.0432392
       messages: 
       output: 
       stacktrace: 
@@ -596,7 +596,7 @@ MonoBehaviour:
       name: CreateExecuteEventAndClear
       fullName: EventsTests.CreateExecuteEventAndClear
       resultStatus: 1
-      duration: 0.000162
+      duration: 0.0165096
       messages: 
       output: 
       stacktrace: 
@@ -613,16 +613,17 @@ MonoBehaviour:
       name: PerformaceTest
       fullName: EventsTests.PerformaceTest
       resultStatus: 1
-      duration: 0.0053861
+      duration: 0.0091686
       messages: 
-      output: 'Initialization: 0ms
+      output: 'Initialization: 623 ticks
 
-        Raising 10000 identical Events: 3ms
+        Raising 10000 identical Events:
+        31099 ticks
 
-        Handling
-        10000 identical Events: 0ms
+        Handling 10000 identical Events: 1858 ticks
 
-        10000, 100000
+        10000,
+        100000
 
 '
       stacktrace: 
@@ -639,7 +640,7 @@ MonoBehaviour:
       name: ResizeAndSaveData
       fullName: EventsTests.ResizeAndSaveData
       resultStatus: 1
-      duration: 0.0001236
+      duration: 0.0004491
       messages: 
       output: 
       stacktrace: 
@@ -656,7 +657,7 @@ MonoBehaviour:
       name: TasksTest
       fullName: TasksTest
       resultStatus: 1
-      duration: 0.0190303
+      duration: 0.0248508
       messages: 
       output: 
       stacktrace: 
@@ -672,7 +673,7 @@ MonoBehaviour:
       name: StartAndOverTasksInCorrectOrder
       fullName: TasksTest.StartAndOverTasksInCorrectOrder
       resultStatus: 1
-      duration: 0.0014839
+      duration: 0.0070184
       messages: 
       output: 
       stacktrace: 
@@ -689,7 +690,7 @@ MonoBehaviour:
       name: WrappedTasksWillBeStopped
       fullName: TasksTest.WrappedTasksWillBeStopped
       resultStatus: 1
-      duration: 0.0001263
+      duration: 0.001786
       messages: 
       output: 
       stacktrace: 
@@ -701,19 +702,19 @@ MonoBehaviour:
       - Uncategorized
       parentId: 1001
       parentUniqueId: Tests.dll/[Tests][TasksTest][suite]
-    m_ResultText: 'PerformaceTest (0.005s)
+    m_ResultText: 'PerformaceTest (0.009s)
 
       ---
 
-      Initialization: 0ms
+      Initialization: 623
+      ticks
 
-      Raising
-      10000 identical Events: 3ms
+      Raising 10000 identical Events: 31099 ticks
 
-      Handling 10000 identical Events: 0ms
+      Handling 10000
+      identical Events: 1858 ticks
 
-      10000,
-      100000'
+      10000, 100000'
     m_ResultStacktrace: 
     m_TestListState:
       scrollPos: {x: 0, y: 0}
@@ -783,9 +784,9 @@ MonoBehaviour:
   m_SceneHierarchy:
     m_TreeViewState:
       scrollPos: {x: 0, y: 0}
-      m_SelectedIDs: 425e0000
-      m_LastClickedID: 24130
-      m_ExpandedIDs: 2443ffffe243ffff2246ffff4a4bffffd250ffffe858ffffb260ffff1673ffff7c78ffffba7effffca80ffff148effffea94ffff8e99ffff12a2ffff22a7ffff1afbffff
+      m_SelectedIDs: 08590000
+      m_LastClickedID: 22792
+      m_ExpandedIDs: f6faffff
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -1281,7 +1282,7 @@ MonoBehaviour:
   m_Rotation:
     m_Target: {x: 0.5078752, y: -0.015506802, z: 0.009146943, w: 0.86124647}
     speed: 2
-    m_Value: {x: 0.50787354, y: -0.01550675, z: 0.009146912, w: 0.8612436}
+    m_Value: {x: -0.5078752, y: 0.015506801, z: -0.009146942, w: -0.8612464}
   m_Size:
     m_Target: 10
     speed: 2
@@ -1472,7 +1473,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: d45a0000
     m_LastClickedID: 23252
-    m_ExpandedIDs: 000000004e59000000ca9a3b
+    m_ExpandedIDs: 000000005c590000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1500,7 +1501,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: 000000004e590000
+    m_ExpandedIDs: 000000005c590000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 

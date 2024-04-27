@@ -438,6 +438,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b8089ec6a2c8f29499bc42ae886a777b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  VarsAsset: {fileID: 4900000, guid: 8696a122250b61547a2380d24d00cbc4, type: 3}
   EntityManager: {fileID: 983788343}
 --- !u!4 &983788345
 Transform:
