@@ -1,0 +1,9 @@
+;this is a comment
+;below is file example
+;[Player]
+;IsInvinsible true
+;
+;[Volume]
+;Sound 8
+;Music 10
+;Voice 10
