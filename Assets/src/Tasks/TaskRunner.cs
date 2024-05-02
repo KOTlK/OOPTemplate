@@ -1,15 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Collections;
 using System.Linq;
 using static UnityEngine.Assertions.Assert;
 
-public enum TaskGroupType{
+public enum TaskGroupType {
     Gameplay,
     GUI,
     ExecuteAlways
 }
 
-public class TaskRunner{
+public class TaskRunner {
     private Dictionary<TaskGroupType, TaskGroup> _groups = new();
     
     public int TasksCount => _groups.Sum(group => group.Value.TasksCount);
@@ -22,10 +23,9 @@ public class TaskRunner{
         }
     }
     
-    public void StartTask(TaskGroupType group, Task task){
+    public void StartTask(TaskGroupType group, IEnumerator task){
         IsTrue(task != null);
         IsTrue(_groups.ContainsKey(group));
-        task.Group = group;
         _groups[group].NewTask(task);
     }
     

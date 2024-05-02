@@ -2,17 +2,18 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 using System.Collections.Generic;
+using System.Collections;
 
 public class TasksTest
 {
     [Test]
-    public void StartAndOverTasksInCorrectOrder(){
+    public void StartAndOverTasksInCorrectOrder() {
         var tasksCount         = 100;
         var maxExecutionsCount = 100;
         var tasksDict          = new Dictionary<SampleTask, int>();
         var runner = new TaskRunner();
         
-        for(var i = 0; i < tasksCount; ++i){
+        for(var i = 0; i < tasksCount; ++i) {
             var exCount = Random.Range(0, maxExecutionsCount);
             var task    = new SampleTask(exCount);
             runner.StartTask(TaskGroupType.Gameplay, task);
@@ -20,11 +21,11 @@ public class TasksTest
             Assert.True(task.Started);
         }
         
-        for(var i = 0; i < maxExecutionsCount; ++i){
+        for(var i = 0; i < maxExecutionsCount; ++i) {
             runner.RunTaskGroup(TaskGroupType.Gameplay);
             
-            foreach(var (task, exCount) in tasksDict){
-                if(exCount == i){
+            foreach(var (task, exCount) in tasksDict) {
+                if(exCount == i) {
                     Assert.True(task.Stopped);
                 }
             }
@@ -32,7 +33,7 @@ public class TasksTest
     }
     
     [Test]
-    public void WrappedTasksWillBeStopped(){
+    public void WrappedTasksWillBeStopped() {
         var runner = new TaskRunner();
         
         var task1 = new WrappedTask();
@@ -44,52 +45,61 @@ public class TasksTest
         
         runner.RunTaskGroup(TaskGroupType.Gameplay);
         
-        Assert.True(task1.IsOver);
-        Assert.True(task2.IsOver);
+        Assert.True(task1.Stopped);
+        Assert.True(task2.Stopped);
         Assert.True(runner.TasksCount == 0);
     }
 }
 
-public class SampleTask : Task{
+public class SampleTask : IEnumerator {
     public bool Started       = false;
     public bool Stopped       = false;
     public int ExecutionCount = 0;
     public int MaxExecutions  = 1;
     
-    public SampleTask(int maxExecutions){
+    public SampleTask(int maxExecutions) {
         MaxExecutions = maxExecutions;
+        Started       = true;
     }
     
-    public override void OnCreate(){
-        Started = true;
-    }
+    public object Current => null;
     
-    public override void OnOver(){
-        Stopped = true;
-    }
+    public void Reset() {}
     
-    public override void Run(){
+    public bool MoveNext() {
         ExecutionCount++;
         
-        if(ExecutionCount >= MaxExecutions){
-            Stop();
+        if(ExecutionCount >= MaxExecutions) {
+            Stopped = true;
+            return false;
         }
+        
+        return true;
     }
 }
 
-public class WrappedTask : Task{
+public class WrappedTask : IEnumerator {
+    public bool Stopped = false;
     public WrappedTask TaskToStop;
     
     public WrappedTask(WrappedTask taskToStop){
         TaskToStop = taskToStop;
     }
     
-    public WrappedTask(){
+    public WrappedTask() {
         TaskToStop = null;
     }
     
-    public override void Run(){
-        TaskToStop.Stop();
-        Stop();
+    public object Current => null;
+    
+    public void Reset() {}
+    
+    public bool MoveNext() {
+        Stopped = true;
+        
+        if(TaskToStop != null) {
+            TaskToStop.MoveNext();
+        }
+        return false;
     }
 }

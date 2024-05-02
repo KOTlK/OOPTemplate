@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1920
     height: 997
   m_ShowMode: 4
-  m_Title: Game
+  m_Title: Test Runner
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -119,7 +119,7 @@ MonoBehaviour:
   m_MinSize: {x: 400, y: 100}
   m_MaxSize: {x: 32384, y: 16192}
   vertical: 0
-  controlID: 48
+  controlID: 109
 --- !u!114 &6
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -190,8 +190,8 @@ MonoBehaviour:
     y: 0
     width: 174
     height: 580
-  m_MinSize: {x: 201, y: 221}
-  m_MaxSize: {x: 4001, y: 4021}
+  m_MinSize: {x: 200, y: 200}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 16}
   m_Panes:
   - {fileID: 16}
@@ -216,8 +216,8 @@ MonoBehaviour:
     y: 0
     width: 509
     height: 580
-  m_MinSize: {x: 202, y: 221}
-  m_MaxSize: {x: 4002, y: 4021}
+  m_MinSize: {x: 200, y: 200}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 17}
   m_Panes:
   - {fileID: 17}
@@ -243,8 +243,8 @@ MonoBehaviour:
     y: 0
     width: 526
     height: 580
-  m_MinSize: {x: 202, y: 221}
-  m_MaxSize: {x: 4002, y: 4021}
+  m_MinSize: {x: 200, y: 200}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 18}
   m_Panes:
   - {fileID: 18}
@@ -269,8 +269,8 @@ MonoBehaviour:
     y: 580
     width: 1209
     height: 367
-  m_MinSize: {x: 101, y: 121}
-  m_MaxSize: {x: 4001, y: 4021}
+  m_MinSize: {x: 100, y: 100}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 20}
   m_Panes:
   - {fileID: 19}
@@ -287,7 +287,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 1
   m_Script: {fileID: 12006, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: InspectorWindow
+  m_Name: TestRunnerWindow
   m_EditorClassIdentifier: 
   m_Children: []
   m_Position:
@@ -296,15 +296,15 @@ MonoBehaviour:
     y: 0
     width: 711
     height: 947
-  m_MinSize: {x: 276, y: 71}
-  m_MaxSize: {x: 4001, y: 4021}
-  m_ActualView: {fileID: 21}
+  m_MinSize: {x: 100, y: 100}
+  m_MaxSize: {x: 4000, y: 4000}
+  m_ActualView: {fileID: 15}
   m_Panes:
   - {fileID: 21}
   - {fileID: 15}
   - {fileID: 13}
-  m_Selected: 0
-  m_LastSelected: 1
+  m_Selected: 1
+  m_LastSelected: 0
 --- !u!114 &13
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -464,7 +464,7 @@ MonoBehaviour:
     m_SaveData: []
     m_OverlaysVisible: 1
   m_Spl:
-    ID: 137
+    ID: 154
     splitterInitialOffset: 0
     currentActiveSplitter: -1
     realSizes:
@@ -548,7 +548,7 @@ MonoBehaviour:
       name: ProjectTemplate
       fullName: ProjectTemplate
       resultStatus: 1
-      duration: 0.1107811
+      duration: 0.1228739
       messages: 
       output: 
       stacktrace: 
@@ -564,7 +564,7 @@ MonoBehaviour:
       name: Tests.dll
       fullName: D:/Unity/Projects/ProjectTemplate/Library/ScriptAssemblies/Tests.dll
       resultStatus: 1
-      duration: 0.0701717
+      duration: 0.0769631
       messages: 
       output: 
       stacktrace: 
@@ -580,7 +580,7 @@ MonoBehaviour:
       name: EventsTests
       fullName: EventsTests
       resultStatus: 1
-      duration: 0.0432392
+      duration: 0.0418029
       messages: 
       output: 
       stacktrace: 
@@ -596,7 +596,7 @@ MonoBehaviour:
       name: CreateExecuteEventAndClear
       fullName: EventsTests.CreateExecuteEventAndClear
       resultStatus: 1
-      duration: 0.0165096
+      duration: 0.0160603
       messages: 
       output: 
       stacktrace: 
@@ -613,14 +613,14 @@ MonoBehaviour:
       name: PerformaceTest
       fullName: EventsTests.PerformaceTest
       resultStatus: 1
-      duration: 0.0091686
+      duration: 0.0093453
       messages: 
-      output: 'Initialization: 623 ticks
+      output: 'Initialization: 633 ticks
 
         Raising 10000 identical Events:
-        31099 ticks
+        30839 ticks
 
-        Handling 10000 identical Events: 1858 ticks
+        Handling 10000 identical Events: 1821 ticks
 
         10000,
         100000
@@ -640,7 +640,7 @@ MonoBehaviour:
       name: ResizeAndSaveData
       fullName: EventsTests.ResizeAndSaveData
       resultStatus: 1
-      duration: 0.0004491
+      duration: 0.0004403
       messages: 
       output: 
       stacktrace: 
@@ -657,7 +657,7 @@ MonoBehaviour:
       name: TasksTest
       fullName: TasksTest
       resultStatus: 1
-      duration: 0.0248508
+      duration: 0.0246859
       messages: 
       output: 
       stacktrace: 
@@ -673,7 +673,7 @@ MonoBehaviour:
       name: StartAndOverTasksInCorrectOrder
       fullName: TasksTest.StartAndOverTasksInCorrectOrder
       resultStatus: 1
-      duration: 0.0070184
+      duration: 0.006738
       messages: 
       output: 
       stacktrace: 
@@ -690,7 +690,7 @@ MonoBehaviour:
       name: WrappedTasksWillBeStopped
       fullName: TasksTest.WrappedTasksWillBeStopped
       resultStatus: 1
-      duration: 0.001786
+      duration: 0.0017626
       messages: 
       output: 
       stacktrace: 
@@ -702,24 +702,12 @@ MonoBehaviour:
       - Uncategorized
       parentId: 1001
       parentUniqueId: Tests.dll/[Tests][TasksTest][suite]
-    m_ResultText: 'PerformaceTest (0.009s)
-
-      ---
-
-      Initialization: 623
-      ticks
-
-      Raising 10000 identical Events: 31099 ticks
-
-      Handling 10000
-      identical Events: 1858 ticks
-
-      10000, 100000'
+    m_ResultText: WrappedTasksWillBeStopped (0.002s)
     m_ResultStacktrace: 
     m_TestListState:
       scrollPos: {x: 0, y: 0}
-      m_SelectedIDs: 1652a5e5
-      m_LastClickedID: -442150378
+      m_SelectedIDs: 6fe55e7b
+      m_LastClickedID: 2069816687
       m_ExpandedIDs: b8dc6f87170b8a9129516892d881bfcaf02d55ece557abf7d3643f098f8d9534b3bedd47b63a6168ffffff7f
       m_RenameOverlay:
         m_UserAcceptedRename: 0
@@ -786,7 +774,7 @@ MonoBehaviour:
       scrollPos: {x: 0, y: 0}
       m_SelectedIDs: 
       m_LastClickedID: 0
-      m_ExpandedIDs: 26fbffff
+      m_ExpandedIDs: b4e3fffff2e8fffff8eaffffa2faffff
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -1473,7 +1461,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: d45a0000
     m_LastClickedID: 23252
-    m_ExpandedIDs: 000000004e590000
+    m_ExpandedIDs: 0000000066590000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1501,7 +1489,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: 000000004e590000
+    m_ExpandedIDs: 0000000066590000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
