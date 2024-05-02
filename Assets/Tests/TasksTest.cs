@@ -47,7 +47,6 @@ public class TasksTest
         
         Assert.True(task1.Stopped);
         Assert.True(task2.Stopped);
-        Assert.True(runner.TasksCount == 0);
     }
 }
 

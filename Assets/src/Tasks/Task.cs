@@ -1,6 +1,7 @@
 using System.Collections;
 
 public struct Task {
-    public int         Index;
     public IEnumerator Iterator;
+    public int         Index;
+    public bool        IsOver;
 }

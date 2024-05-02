@@ -13,8 +13,6 @@ public enum TaskGroupType {
 public class TaskRunner {
     private Dictionary<TaskGroupType, TaskGroup> _groups = new();
     
-    public int TasksCount => _groups.Sum(group => group.Value.TasksCount);
-    
     public TaskRunner(){
         var types = Enum.GetValues(typeof(TaskGroupType));
         
