@@ -1,12 +1,12 @@
 using UnityEngine;
 
-public class Main : MonoBehaviour{
+public class Main : MonoBehaviour {
     public TextAsset     VarsAsset;
     public EntityManager EntityManager;
     public TaskRunner    TaskRunner;
     public Events        Events;
     
-    private void Awake(){
+    private void Awake() {
         Vars.ParseVars(VarsAsset);
         TaskRunner = new TaskRunner();
         Events     = new Events();
@@ -16,11 +16,12 @@ public class Main : MonoBehaviour{
         Singleton<Events>.Create(Events);
     }
     
-    private void Start(){
+    private void Start() {
         EntityManager.BakeEntities();
     }
     
-    private void Update(){
+    private void Update() {
+        Clock.Update();
         TaskRunner.RunTaskGroup(TaskGroupType.ExecuteAlways);
     }
 }
