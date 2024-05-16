@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1920
     height: 997
   m_ShowMode: 4
-  m_Title: Test Runner
+  m_Title: Game
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -243,8 +243,8 @@ MonoBehaviour:
     y: 0
     width: 568
     height: 580
-  m_MinSize: {x: 202, y: 221}
-  m_MaxSize: {x: 4002, y: 4021}
+  m_MinSize: {x: 200, y: 200}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 18}
   m_Panes:
   - {fileID: 18}
@@ -548,7 +548,7 @@ MonoBehaviour:
       name: ProjectTemplate
       fullName: ProjectTemplate
       resultStatus: 1
-      duration: 0.1164591
+      duration: 0.1133117
       messages: 
       output: 
       stacktrace: 
@@ -559,12 +559,12 @@ MonoBehaviour:
       categories: []
       parentId: 
       parentUniqueId: 
-    - id: 1004
+    - id: 1008
       uniqueId: '[Tests][D:/Unity/Projects/ProjectTemplate/Library/ScriptAssemblies/Tests.dll][suite]'
       name: Tests.dll
       fullName: D:/Unity/Projects/ProjectTemplate/Library/ScriptAssemblies/Tests.dll
       resultStatus: 1
-      duration: 0.0725296
+      duration: 0.0690394
       messages: 
       output: 
       stacktrace: 
@@ -580,7 +580,7 @@ MonoBehaviour:
       name: EventsTests
       fullName: EventsTests
       resultStatus: 1
-      duration: 0.0416664
+      duration: 0.0432462
       messages: 
       output: 
       stacktrace: 
@@ -589,14 +589,14 @@ MonoBehaviour:
       description: 
       isSuite: 1
       categories: []
-      parentId: 1006
+      parentId: 1008
       parentUniqueId: '[Tests][D:/Unity/Projects/ProjectTemplate/Library/ScriptAssemblies/Tests.dll][suite]'
     - id: 1002
       uniqueId: Tests.dll/EventsTests/[Tests][EventsTests.CreateExecuteEventAndClear]
       name: CreateExecuteEventAndClear
       fullName: EventsTests.CreateExecuteEventAndClear
       resultStatus: 1
-      duration: 0.0159752
+      duration: 0.0165341
       messages: 
       output: 
       stacktrace: 
@@ -613,14 +613,14 @@ MonoBehaviour:
       name: PerformaceTest
       fullName: EventsTests.PerformaceTest
       resultStatus: 1
-      duration: 0.0092097
+      duration: 0.0093454
       messages: 
-      output: 'Initialization: 685 ticks
+      output: 'Initialization: 631 ticks
 
         Raising 10000 identical Events:
-        30211 ticks
+        31415 ticks
 
-        Handling 10000 identical Events: 1799 ticks
+        Handling 10000 identical Events: 2143 ticks
 
         10000,
         100000
@@ -640,7 +640,7 @@ MonoBehaviour:
       name: ResizeAndSaveData
       fullName: EventsTests.ResizeAndSaveData
       resultStatus: 1
-      duration: 0.0004122
+      duration: 0.0004989
       messages: 
       output: 
       stacktrace: 
@@ -652,12 +652,12 @@ MonoBehaviour:
       - Uncategorized
       parentId: 1001
       parentUniqueId: Tests.dll/[Tests][EventsTests][suite]
-    - id: 1001
+    - id: 1005
       uniqueId: Tests.dll/[Tests][TasksTest][suite]
       name: TasksTest
       fullName: TasksTest
       resultStatus: 1
-      duration: 0.0207481
+      duration: 0.0236738
       messages: 
       output: 
       stacktrace: 
@@ -666,14 +666,14 @@ MonoBehaviour:
       description: 
       isSuite: 1
       categories: []
-      parentId: 1004
+      parentId: 1008
       parentUniqueId: '[Tests][D:/Unity/Projects/ProjectTemplate/Library/ScriptAssemblies/Tests.dll][suite]'
-    - id: 1002
+    - id: 1006
       uniqueId: Tests.dll/TasksTest/[Tests][TasksTest.StartAndOverTasksInCorrectOrder]
       name: StartAndOverTasksInCorrectOrder
       fullName: TasksTest.StartAndOverTasksInCorrectOrder
       resultStatus: 1
-      duration: 0.006877
+      duration: 0.0068029
       messages: 
       output: 
       stacktrace: 
@@ -683,14 +683,14 @@ MonoBehaviour:
       isSuite: 0
       categories:
       - Uncategorized
-      parentId: 1001
+      parentId: 1005
       parentUniqueId: Tests.dll/[Tests][TasksTest][suite]
-    - id: 1003
+    - id: 1007
       uniqueId: Tests.dll/TasksTest/[Tests][TasksTest.WrappedTasksWillBeStopped]
       name: WrappedTasksWillBeStopped
       fullName: TasksTest.WrappedTasksWillBeStopped
       resultStatus: 1
-      duration: 0.0005314
+      duration: 0.0006233
       messages: 
       output: 
       stacktrace: 
@@ -700,7 +700,7 @@ MonoBehaviour:
       isSuite: 0
       categories:
       - Uncategorized
-      parentId: 1001
+      parentId: 1005
       parentUniqueId: Tests.dll/[Tests][TasksTest][suite]
     m_ResultText: WrappedTasksWillBeStopped (0.001s)
     m_ResultStacktrace: 
@@ -1270,7 +1270,7 @@ MonoBehaviour:
   m_Rotation:
     m_Target: {x: 0.5078752, y: -0.015506802, z: 0.009146943, w: 0.86124647}
     speed: 2
-    m_Value: {x: -0.5078752, y: 0.015506801, z: -0.009146942, w: -0.8612464}
+    m_Value: {x: 0.50787354, y: -0.01550675, z: 0.009146912, w: 0.8612436}
   m_Size:
     m_Target: 10
     speed: 2
@@ -1461,7 +1461,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: d45a0000
     m_LastClickedID: 23252
-    m_ExpandedIDs: 0000000056590000
+    m_ExpandedIDs: 0000000052590000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1489,7 +1489,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: 0000000056590000
+    m_ExpandedIDs: 0000000052590000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 

@@ -48,9 +48,157 @@ public class TasksTest
         Assert.True(task1.Stopped);
         Assert.True(task2.Stopped);
     }
+    
+    [Test]
+    public void TaskSequenceWillExecute() {
+        var group = new TaskGroup(10);
+        
+        var task1 = new TaskForSequence();
+        var task2 = new TaskForSequence();
+        var task3 = new TaskForSequence();
+        var task4 = new TaskForSequence();
+        
+        var seq = new TaskSequence(new Task[] {
+            task1,
+            task2,
+            task3,
+            task4
+        });
+        
+        var seqIndex = group.NewTask(seq);
+        
+        Assert.True(task1.Executed == false);
+        Assert.True(task2.Executed == false);
+        Assert.True(task3.Executed == false);
+        Assert.True(task4.Executed == false);
+        
+        group.RunTasks();
+        
+        Assert.True(task1.Executed == true);
+        Assert.True(task2.Executed == false);
+        Assert.True(task3.Executed == false);
+        Assert.True(task4.Executed == false);
+        
+        group.RunTasks();
+        
+        Assert.True(task1.Executed == true);
+        Assert.True(task2.Executed == true);
+        Assert.True(task3.Executed == false);
+        Assert.True(task4.Executed == false);
+        
+        group.RunTasks();
+        
+        Assert.True(task1.Executed == true);
+        Assert.True(task2.Executed == true);
+        Assert.True(task3.Executed == true);
+        Assert.True(task4.Executed == false);
+        
+        group.RunTasks();
+        
+        Assert.True(task1.Executed == true);
+        Assert.True(task2.Executed == true);
+        Assert.True(task3.Executed == true);
+        Assert.True(task4.Executed == true);
+        
+        Assert.True(group.TaskOver(seqIndex));
+    }
+    
+    [Test]
+    public void ParallelTasksWillExecute() {
+        var group = new TaskGroup(10);
+        
+        var task1 = new SampleTask(1);
+        var task2 = new SampleTask(3);
+        var task3 = new SampleTask(2);
+        var task4 = new SampleTask(4);
+        
+        var seq = new ParallelTaskGroup(new Task[] {
+            task1,
+            task2,
+            task3,
+            task4
+        });
+        
+        var seqIndex = group.NewTask(seq);
+        
+        Assert.True(task1.Stopped == false);
+        Assert.True(task2.Stopped == false);
+        Assert.True(task3.Stopped == false);
+        Assert.True(task4.Stopped == false);
+        
+        group.RunTasks();
+        
+        Assert.True(task1.Stopped == true);
+        Assert.True(task2.Stopped == false);
+        Assert.True(task3.Stopped == false);
+        Assert.True(task4.Stopped == false);
+        
+        group.RunTasks();
+        
+        Assert.True(task1.Stopped == true);
+        Assert.True(task2.Stopped == false);
+        Assert.True(task3.Stopped == true);
+        Assert.True(task4.Stopped == false);
+        
+        group.RunTasks();
+        
+        Assert.True(task1.Stopped == true);
+        Assert.True(task2.Stopped == true);
+        Assert.True(task3.Stopped == true);
+        Assert.True(task4.Stopped == false);
+        
+        group.RunTasks();
+        
+        Assert.True(task1.Stopped == true);
+        Assert.True(task2.Stopped == true);
+        Assert.True(task3.Stopped == true);
+        Assert.True(task4.Stopped == true);
+        
+        Assert.True(group.TaskOver(seqIndex));
+    }
+    
+    [Test]
+    public void SequenceOfParallelTasksWillExecute() {
+        var group = new TaskGroup(10);
+        
+        var task1 = new TaskForSequence();
+        var task2 = new TaskForSequence();
+        var task3 = new TaskForSequence();
+        var task4 = new TaskForSequence();
+        var task5 = new TaskForSequence();
+        
+        var seq = new TaskSequence(
+                        new ParallelTaskGroup(
+                            task1,
+                            task2,
+                            task3),
+                        new ParallelTaskGroup(
+                            task4,
+                            task5));
+                            
+        var seqIndex = group.NewTask(seq);
+        
+        group.RunTasks();
+                            
+        Assert.True(task1.Executed == true);
+        Assert.True(task2.Executed == true);
+        Assert.True(task3.Executed == true);
+        Assert.True(task4.Executed == false);
+        Assert.True(task5.Executed == false);
+        Assert.True(group.TaskOver(seqIndex) == false);
+        
+        group.RunTasks();
+                            
+        Assert.True(task1.Executed == true);
+        Assert.True(task2.Executed == true);
+        Assert.True(task3.Executed == true);
+        Assert.True(task4.Executed == true);
+        Assert.True(task5.Executed == true);
+        Assert.True(group.TaskOver(seqIndex) == true);
+    }
 }
 
-public class SampleTask : IEnumerator {
+public class SampleTask : Task {
     public bool Started       = false;
     public bool Stopped       = false;
     public int ExecutionCount = 0;
@@ -61,23 +209,19 @@ public class SampleTask : IEnumerator {
         Started       = true;
     }
     
-    public object Current => null;
-    
-    public void Reset() {}
-    
-    public bool MoveNext() {
+    public override bool Update() {
         ExecutionCount++;
         
         if(ExecutionCount >= MaxExecutions) {
             Stopped = true;
-            return false;
+            return true;
         }
         
-        return true;
+        return false;
     }
 }
 
-public class WrappedTask : IEnumerator {
+public class WrappedTask : Task {
     public bool Stopped = false;
     public WrappedTask TaskToStop;
     
@@ -89,16 +233,25 @@ public class WrappedTask : IEnumerator {
         TaskToStop = null;
     }
     
-    public object Current => null;
-    
-    public void Reset() {}
-    
-    public bool MoveNext() {
+    public override bool Update() {
         Stopped = true;
         
         if(TaskToStop != null) {
-            TaskToStop.MoveNext();
+            TaskToStop.Update();
         }
-        return false;
+        return true;
+    }
+}
+
+public class TaskForSequence : Task {
+    public bool Executed = false;
+    
+    public override bool Update() {
+        Executed = true;
+        return true;
+    }
+    
+    public override void Reset() {
+        Executed = false;
     }
 }

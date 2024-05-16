@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Collections;
-using System.Linq;
+using System.Runtime.CompilerServices;
 using static UnityEngine.Assertions.Assert;
 
 public enum TaskGroupType {
@@ -13,27 +12,35 @@ public enum TaskGroupType {
 public class TaskRunner {
     private Dictionary<TaskGroupType, TaskGroup> _groups = new();
     
-    public TaskRunner(){
+    public TaskRunner() {
         var types = Enum.GetValues(typeof(TaskGroupType));
         
-        foreach(var type in types){
+        foreach(var type in types) {
             _groups.Add((TaskGroupType)type, new TaskGroup(30));
         }
     }
     
-    public void StartTask(TaskGroupType group, IEnumerator task){
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void StartTask(TaskGroupType group, Task task) {
         IsTrue(task != null);
         IsTrue(_groups.ContainsKey(group));
         _groups[group].NewTask(task);
     }
     
-    public void EndTask(TaskGroupType group, int index){
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void EndTask(TaskGroupType group, int index) {
         IsTrue(_groups.ContainsKey(group));
         _groups[group].EndTask(index);
     }
     
-    public void RunTaskGroup(TaskGroupType group){
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void RunTaskGroup(TaskGroupType group) {
         IsTrue(_groups.ContainsKey(group));
         _groups[group].RunTasks();
+    }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public TaskGroup GetGroup(TaskGroupType type) {
+        return _groups[type];
     }
 }
