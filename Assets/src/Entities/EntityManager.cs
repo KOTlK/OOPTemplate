@@ -55,6 +55,12 @@ public class EntityManager : MonoBehaviour {
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public T CreateEntity<T>(Entity prefab, Vector3 position)
+    where T : Entity {
+        return (T)CreateEntity(prefab, position);
+    }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Entity CreateEntity(Entity prefab, 
                                Vector3 position, 
                                Quaternion orientation, 
@@ -62,6 +68,16 @@ public class EntityManager : MonoBehaviour {
         return CreateEntity(prefab, position, orientation, scale, null);
     }
     
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public T CreateEntity<T>(Entity prefab, 
+                             Vector3 position, 
+                             Quaternion orientation, 
+                             Vector3 scale)
+    where T : Entity {
+        return (T)CreateEntity(prefab, position, orientation, scale);
+    }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Entity CreateEntity(Entity prefab, 
                                Vector3 position, 
                                Quaternion orientation, 
@@ -97,6 +113,16 @@ public class EntityManager : MonoBehaviour {
         obj.OnCreate();
         
         return obj;
+    }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public T CreateEntity<T>(Entity prefab,
+                             Vector3 position,
+                             Quaternion orientation,
+                             Vector3 scale,
+                             Transform parent)
+    where T : Entity {
+        return (T)CreateEntity(prefab, position, orientation, scale, parent);
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -149,20 +175,25 @@ public class EntityManager : MonoBehaviour {
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Execute() {
-        for(var i = 0; i < DynamicEntities.Count; ++i) {
-            Entities[DynamicEntities[i]].Entity.Execute();
-        }
-        
         for(var i = 0; i < EntitiesToRemoveCount; ++i) {
             DestroyEntityImmediate(RemoveQueue[i]);
         }
         EntitiesToRemoveCount = 0;
+        
+        for(var i = 0; i < DynamicEntities.Count; ++i) {
+            Entities[DynamicEntities[i]].Entity.Execute();
+        }
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Entity GetEntity(int id, out bool alive) {
-        alive = Entities[id].Alive;
-        return Entities[id].Entity;
+    public (bool alive, Entity entity) GetEntity(int id) {
+        return (Entities[id].Alive, Entities[id].Entity);
+    }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public (bool alive, T entity) GetEntity<T>(int id)
+    where T : Entity {
+        return (Entities[id].Alive, (T)Entities[id].Entity);
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
