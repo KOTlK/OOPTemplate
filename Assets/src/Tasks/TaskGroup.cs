@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Runtime.CompilerServices;
-using static UnityEngine.Assertions.Assert;
+using static Assertions;
 
 public class TaskGroup {
     public TaskPtr[] AllTasks;
@@ -43,7 +43,7 @@ public class TaskGroup {
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EndTask(int i) {
-        IsTrue(AllTasks[i].Task != null);
+        Assert(AllTasks[i].Task != null);
         
         if(RemovedTasksCount == RemovedTasks.Length) {
             Array.Resize(ref RemovedTasks, RemovedTasksCount << 1);

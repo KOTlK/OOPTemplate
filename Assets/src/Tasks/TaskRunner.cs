@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using static UnityEngine.Assertions.Assert;
+using static Assertions;
 
 public enum TaskGroupType {
     Gameplay,
@@ -22,20 +22,20 @@ public class TaskRunner {
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void StartTask(TaskGroupType group, Task task) {
-        IsTrue(task != null);
-        IsTrue(_groups.ContainsKey(group));
+        Assert(task != null);
+        Assert(_groups.ContainsKey(group));
         _groups[group].NewTask(task);
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EndTask(TaskGroupType group, int index) {
-        IsTrue(_groups.ContainsKey(group));
+        Assert(_groups.ContainsKey(group));
         _groups[group].EndTask(index);
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void RunTaskGroup(TaskGroupType group) {
-        IsTrue(_groups.ContainsKey(group));
+        Assert(_groups.ContainsKey(group));
         _groups[group].RunTasks();
     }
     

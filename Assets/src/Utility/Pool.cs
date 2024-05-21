@@ -1,5 +1,5 @@
 using System;
-using static UnityEngine.Assertions.Assert;
+using static Assertions;
 
 public class Pool<T> {
     public delegate T CreatePooledItem();
@@ -23,7 +23,7 @@ public class Pool<T> {
         if(ItemsCount > 0) {
             return Items[--ItemsCount];
         }else {
-            IsTrue(Factory != null);
+            Assert(Factory != null);
             return Factory();
         }
         

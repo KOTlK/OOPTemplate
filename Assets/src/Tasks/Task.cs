@@ -1,6 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
-using static UnityEngine.Assertions.Assert;
+using static Assertions;
 
 public struct TaskPtr {
     public Task Task;
@@ -19,8 +19,8 @@ public class TaskSequence : Task {
     private int _cursor;
     
     public TaskSequence(params Task[] tasks) {
-        IsTrue(tasks != null);
-        IsTrue(tasks.Length > 0);
+        Assert(tasks != null);
+        Assert(tasks.Length > 0);
         Tasks   = tasks;
         _cursor = 0;
     }
@@ -51,8 +51,8 @@ public class ParallelTaskGroup : Task {
     public List<int> TasksOver;
     
     public ParallelTaskGroup(params Task[] tasks) {
-        IsTrue(tasks != null);
-        IsTrue(tasks.Length > 0);
+        Assert(tasks != null);
+        Assert(tasks.Length > 0);
         Tasks = tasks;
         TasksOver = new List<int>(tasks.Length);
     }
