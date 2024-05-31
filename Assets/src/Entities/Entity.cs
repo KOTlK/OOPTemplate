@@ -4,9 +4,9 @@ using System;
 [Flags]
 public enum EntityFlags
 {
-    None    = 0,
-    Static  = 1 << 1,
-    Dynamic = 1 << 2
+    None            = 0,
+    Dynamic         = 1 << 1,
+    InsideHashTable = 1 << 2,
 }
 
 public enum EntityType
@@ -42,5 +42,13 @@ public class Entity : MonoBehaviour {
     
     public virtual void Destroy() {
         Destroy(gameObject);
+    }
+
+    public void Move(Vector3 move) {
+        transform.position += move;
+        Em.MovedEntities.Add(new MovedEntity{
+            Id = Id,
+            NewPosition = transform.position
+        });
     }
 }

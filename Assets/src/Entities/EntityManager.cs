@@ -3,15 +3,28 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
+public struct MovedEntity {
+    public int     Id;
+    public Vector3 NewPosition;
+}
+
 public class EntityManager : MonoBehaviour {
-    public List<Entity>    BakedEntities;
-    public PackedEntity[]  Entities        = new PackedEntity[128];
-    public List<int>       DynamicEntities = new ();
-    public int[]           RemoveQueue     = new int[128];
-    public int[]           FreeEntities    = new int[128];
-    public int             MaxEntitiesCount;
-    public int             FreeEntitiesCount;
-    public int             EntitiesToRemoveCount;
+    public UnboundedSpaceTable EntitiesTable;
+    public int                 StartEntityTableSize = 100;
+    public float               EntityTableSpacing   = 1f;
+    public List<Entity>      BakedEntities;
+    public PackedEntity[]    Entities        = new PackedEntity[128];
+    public List<int>         DynamicEntities = new ();
+    public List<MovedEntity> MovedEntities   = new ();
+    public int[]             RemoveQueue     = new int[128];
+    public int[]             FreeEntities    = new int[128];
+    public int               MaxEntitiesCount;
+    public int               FreeEntitiesCount;
+    public int               EntitiesToRemoveCount;
+
+    private void Awake() {
+        EntitiesTable = new UnboundedSpaceTable(StartEntityTableSize, EntityTableSpacing);
+    }
         
     public void BakeEntities() {
         for(var i = 0; i < BakedEntities.Count; ++i) {
@@ -43,6 +56,14 @@ public class EntityManager : MonoBehaviour {
         
         if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             DynamicEntities.Add(id);
+        }
+
+        if((entity.Flags & EntityFlags.InsideHashTable) == EntityFlags.InsideHashTable) {
+            EntitiesTable.AddEntity(id, entity.transform.position);
+            MovedEntities.Add(new MovedEntity{
+                Id = id,
+                NewPosition = entity.transform.position
+            });
         }
         
         
@@ -107,6 +128,14 @@ public class EntityManager : MonoBehaviour {
         
         if((obj.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             DynamicEntities.Add(id);
+        }
+
+        if((obj.Flags & EntityFlags.InsideHashTable) == EntityFlags.InsideHashTable) {
+            EntitiesTable.AddEntity(id, obj.transform.position);
+            MovedEntities.Add(new MovedEntity{
+                Id = id,
+                NewPosition = obj.transform.position
+            });
         }
         
         
@@ -175,6 +204,14 @@ public class EntityManager : MonoBehaviour {
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Execute() {
+        for(var i = 0; i < MovedEntities.Count; ++i) {
+            EntitiesTable.UpdatePosition(MovedEntities[i].Id, MovedEntities[i].NewPosition);
+        }
+
+        EntitiesTable.Rehash();
+
+        MovedEntities.Clear();
+
         for(var i = 0; i < EntitiesToRemoveCount; ++i) {
             DestroyEntityImmediate(RemoveQueue[i]);
         }

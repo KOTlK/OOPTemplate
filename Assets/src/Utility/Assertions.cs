@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Debug = UnityEngine.Debug;
-using TMPro;
 
 public static class Assertions {
     [Conditional("UNITY_ASSERTIONS")]
