@@ -4,14 +4,14 @@ using System.Runtime.CompilerServices;
 using UnityEngine;
 using static Assertions;
 
-public class UnboundedSpaceTable {
+public class UnboundedSpatialTable {
     public Dictionary<int, Vector3> Positions = new();
     public int[] CellCount;
     public int[] EntityTable;
     public int   Size;
     public float Spacing;
 
-    public UnboundedSpaceTable(int size, float spacing) {
+    public UnboundedSpatialTable(int size, float spacing) {
         Size               = size;
         Spacing            = spacing;
         CellCount          = new int[size + 1];
@@ -54,22 +54,6 @@ public class UnboundedSpaceTable {
             CellCount[hash]--;
             EntityTable[CellCount[hash]] = entity;
         }
-    }
-
-    public int Query(Vector3 position, int[] result) {
-        var count = 0;
-        var hash  = Hash(position);
-        var start = CellCount[hash];
-        var end   = CellCount[hash + 1];
-
-        for(var i = start ; i < end; ++i) {
-            if(count == result.Length) 
-                break;
-
-            result[count++] = EntityTable[i];
-        }
-
-        return count;
     }
 
     public int Query(Vector3 position, int[] result, float radius) {

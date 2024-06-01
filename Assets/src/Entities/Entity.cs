@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using System.Runtime.CompilerServices;
 
 [Flags]
 public enum EntityFlags
@@ -50,5 +51,10 @@ public class Entity : MonoBehaviour {
             Id = Id,
             NewPosition = transform.position
         });
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public int QueryNearbyEntities(float radius, int[] buffer) {
+        return Em.EntitiesTable.Query(transform.position, buffer, radius);
     }
 }

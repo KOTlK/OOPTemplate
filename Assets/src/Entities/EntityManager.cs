@@ -9,7 +9,7 @@ public struct MovedEntity {
 }
 
 public class EntityManager : MonoBehaviour {
-    public UnboundedSpaceTable EntitiesTable;
+    public UnboundedSpatialTable EntitiesTable;
     public int                 StartEntityTableSize = 100;
     public float               EntityTableSpacing   = 1f;
     public List<Entity>      BakedEntities;
@@ -23,7 +23,7 @@ public class EntityManager : MonoBehaviour {
     public int               EntitiesToRemoveCount;
 
     private void Awake() {
-        EntitiesTable = new UnboundedSpaceTable(StartEntityTableSize, EntityTableSpacing);
+        EntitiesTable = new UnboundedSpatialTable(StartEntityTableSize, EntityTableSpacing);
     }
         
     public void BakeEntities() {
@@ -176,6 +176,10 @@ public class EntityManager : MonoBehaviour {
             if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic){
                 DynamicEntities.Remove(id);
             }
+
+            if((entity.Flags & EntityFlags.InsideHashTable) == EntityFlags.InsideHashTable) {
+                EntitiesTable.RemoveEntity(id);
+            }
             
             Entities[id].Entity = null;
             entity.Destroy();
@@ -204,13 +208,14 @@ public class EntityManager : MonoBehaviour {
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Execute() {
-        for(var i = 0; i < MovedEntities.Count; ++i) {
-            EntitiesTable.UpdatePosition(MovedEntities[i].Id, MovedEntities[i].NewPosition);
+        if(MovedEntities.Count > 0) {
+            for(var i = 0; i < MovedEntities.Count; ++i) {
+                EntitiesTable.UpdatePosition(MovedEntities[i].Id, MovedEntities[i].NewPosition);
+            }
+
+            EntitiesTable.Rehash();
+            MovedEntities.Clear();
         }
-
-        EntitiesTable.Rehash();
-
-        MovedEntities.Clear();
 
         for(var i = 0; i < EntitiesToRemoveCount; ++i) {
             DestroyEntityImmediate(RemoveQueue[i]);
