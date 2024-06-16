@@ -3,24 +3,26 @@ using System.Runtime.CompilerServices;
 using UnityEngine;
 using static Assertions;
 
-public class UnboundedSpatialTable {
+public class BoundedSpatialTable {
     public struct EntityReference {
         public Vector3 Position;
-        public int Id;
+        public int     Id;
     }
-    
-    public EntityTable<Vector3> Positions;
-    public int[] CellCount;
-    public EntityReference[] EntityTable;
-    public int   Size;
-    public float Spacing;
 
-    public UnboundedSpatialTable(int size, float spacing) {
-        Size        = size;
+    public Vector3Int Size;
+    public EntityTable<Vector3> Positions;
+    public EntityReference[]    EntityTable;
+    public int[]   CellCount;
+    public int     TableSize;
+    public float   Spacing;
+
+    public BoundedSpatialTable(Vector3Int size, float spacing) {
+        Size        = size; 
+        TableSize   = size.x * size.y * size.z;
         Spacing     = spacing;
-        CellCount   = new int[size + 1];
-        EntityTable = new EntityReference[size];
-        Positions   = new EntityTable<Vector3>(size);
+        CellCount   = new int[TableSize + 1];
+        EntityTable = new EntityReference[TableSize];
+        Positions   = new EntityTable<Vector3>(TableSize);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -40,10 +42,10 @@ public class UnboundedSpatialTable {
     }
 
     public void Rehash() {
-        if(Positions.Count > Size + 1) {
-            Size = Positions.Count;
-            Array.Resize(ref CellCount, Size + 1);
-            Array.Resize(ref EntityTable, Size);
+        if(Positions.Count > TableSize + 1) {
+            TableSize = Positions.Count;
+            Array.Resize(ref CellCount, TableSize + 1);
+            Array.Resize(ref EntityTable, TableSize);
         }
         Array.Clear(CellCount, 0, CellCount.Length);
         Array.Clear(EntityTable, 0, EntityTable.Length);
@@ -53,14 +55,14 @@ public class UnboundedSpatialTable {
             CellCount[hash]++;
         }
 
-        for(var i = 1; i < CellCount.Length; ++i) {
+        for(var i = 1; i < TableSize + 1; ++i) {
             CellCount[i] += CellCount[i - 1];
         }
 
         foreach(var (entity, position) in Positions.Iterate()) {
             var hash = Hash(position);
             CellCount[hash]--;
-            EntityTable[CellCount[hash]].Id = entity;
+            EntityTable[CellCount[hash]].Id       = entity;
             EntityTable[CellCount[hash]].Position = position;
         }
     }
@@ -81,7 +83,7 @@ public class UnboundedSpatialTable {
                     var start = CellCount[hash];
                     var end   = CellCount[hash + 1];
 
-                    for(var i = start; i < end; ++i) {
+                    for(var i = start ; i < end; ++i) {
                         if(count == result.Length) {
                             return count;
                         }
@@ -98,6 +100,16 @@ public class UnboundedSpatialTable {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private int Hash(Vector3 pos) {
+        return Math.Abs((Mathf.FloorToInt(pos.x / Spacing * Size.y + Mathf.FloorToInt(pos.y / Spacing))) * Size.z + Mathf.FloorToInt(pos.z / Spacing));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private int Hash(float x, float y, float z) {
+        return Math.Abs((Mathf.FloorToInt(x / Spacing * Size.y + Mathf.FloorToInt(y / Spacing))) * Size.z + Mathf.FloorToInt(z / Spacing));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int IntCoordinateSigned(float coordinate) {
         var sign = Math.Sign(coordinate);
 
@@ -107,29 +119,5 @@ public class UnboundedSpatialTable {
         else {
             return Mathf.FloorToInt(coordinate / Spacing);
         }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int IntCoordinate(float coordinate) {
-        return Mathf.FloorToInt(coordinate / Spacing);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int IntCoordinateRound(float coordinate) {
-        return Mathf.RoundToInt(coordinate / Spacing);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int Hash(int x, int y, int z) {
-        return Mathf.Abs((x * 92837111) ^ 
-                         (y * 689287499) ^ 
-                         (z * 283923481)) % Size;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int Hash(Vector3 position) {
-        return Mathf.Abs((IntCoordinate(position.x) * 92837111) ^ 
-                         (IntCoordinate(position.y) * 689287499) ^ 
-                         (IntCoordinate(position.z) * 283923481)) % Size;
     }
 }
