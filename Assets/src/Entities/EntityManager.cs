@@ -9,9 +9,7 @@ public struct MovedEntity {
 }
 
 public class EntityManager : MonoBehaviour {
-    public UnboundedSpatialTable EntitiesTable;
-    public int                 StartEntityTableSize = 100;
-    public float               EntityTableSpacing   = 1f;
+    public World             World;
     public List<Entity>      BakedEntities;
     public PackedEntity[]    Entities        = new PackedEntity[128];
     public List<int>         DynamicEntities = new ();
@@ -23,7 +21,7 @@ public class EntityManager : MonoBehaviour {
     public int               EntitiesToRemoveCount;
 
     private void Awake() {
-        EntitiesTable = new UnboundedSpatialTable(StartEntityTableSize, EntityTableSpacing);
+        World.Create();
     }
         
     public void BakeEntities() {
@@ -59,13 +57,12 @@ public class EntityManager : MonoBehaviour {
         }
 
         if((entity.Flags & EntityFlags.InsideHashTable) == EntityFlags.InsideHashTable) {
-            EntitiesTable.AddEntity(id, entity.transform.position);
-            MovedEntities.Add(new MovedEntity{
-                Id = id,
-                NewPosition = entity.transform.position
-            });
+            if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
+                World.AddDynamicEntity(id, entity.transform.position);
+            } else if ((entity.Flags & EntityFlags.Static) == EntityFlags.Static) {
+                World.AddStaticEntity(id, entity.transform.position);
+            }
         }
-        
         
         entity.OnCreate();
     }
@@ -131,13 +128,12 @@ public class EntityManager : MonoBehaviour {
         }
 
         if((obj.Flags & EntityFlags.InsideHashTable) == EntityFlags.InsideHashTable) {
-            EntitiesTable.AddEntity(id, obj.transform.position);
-            MovedEntities.Add(new MovedEntity{
-                Id = id,
-                NewPosition = obj.transform.position
-            });
+            if((obj.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
+                World.AddDynamicEntity(id, position);
+            } else if ((obj.Flags & EntityFlags.Static) == EntityFlags.Static) {
+                World.AddStaticEntity(id, position);
+            }
         }
-        
         
         obj.OnCreate();
         
@@ -169,16 +165,20 @@ public class EntityManager : MonoBehaviour {
         var entity = Entities[id].Entity;
         
         if(entity != null){
-            if(FreeEntitiesCount == FreeEntities.Length){
+            if(FreeEntitiesCount == FreeEntities.Length) {
                 Array.Resize(ref FreeEntities, FreeEntitiesCount << 1);
             }
             
-            if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic){
+            if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
                 DynamicEntities.Remove(id);
             }
 
             if((entity.Flags & EntityFlags.InsideHashTable) == EntityFlags.InsideHashTable) {
-                EntitiesTable.RemoveEntity(id);
+                if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
+                    World.RemoveDynamicEntity(entity.Id);
+                } else if((entity.Flags & EntityFlags.Static) == EntityFlags.Static) {
+                    World.RemoveStaticEntity(entity.Id);
+                }
             }
             
             Entities[id].Entity = null;
@@ -210,10 +210,8 @@ public class EntityManager : MonoBehaviour {
     public void Execute() {
         if(MovedEntities.Count > 0) {
             for(var i = 0; i < MovedEntities.Count; ++i) {
-                EntitiesTable.UpdatePosition(MovedEntities[i].Id, MovedEntities[i].NewPosition);
+                World.UpdateDynamicEntityPosition(MovedEntities[i].Id, MovedEntities[i].NewPosition);
             }
-
-            EntitiesTable.Rehash();
             MovedEntities.Clear();
         }
 
@@ -221,6 +219,8 @@ public class EntityManager : MonoBehaviour {
             DestroyEntityImmediate(RemoveQueue[i]);
         }
         EntitiesToRemoveCount = 0;
+
+        World.Execute();
         
         for(var i = 0; i < DynamicEntities.Count; ++i) {
             Entities[DynamicEntities[i]].Entity.Execute();

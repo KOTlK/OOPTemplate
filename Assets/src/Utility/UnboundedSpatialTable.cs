@@ -36,6 +36,9 @@ public class UnboundedSpatialTable {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void UpdatePosition(int entity, Vector3 newPos) {
         Assert(Positions.ContainsKey(entity));
+        if (Positions.ContainsKey(entity) == false) {
+            Debug.Log("False");
+        }
         Positions[entity] = newPos;
     }
 
@@ -65,8 +68,7 @@ public class UnboundedSpatialTable {
         }
     }
 
-    public int Query(Vector3 position, int[] result, float radius) {
-        var count = 0;
+    public int Query(Vector3 position, int[] result, float radius, int count = 0) {
         var xmax = IntCoordinateSigned(position.x + radius);
         var ymax = IntCoordinateSigned(position.y + radius);
         var zmax = IntCoordinateSigned(position.z + radius);

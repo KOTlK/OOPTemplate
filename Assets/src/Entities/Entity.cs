@@ -7,7 +7,8 @@ public enum EntityFlags
 {
     None            = 0,
     Dynamic         = 1 << 1,
-    InsideHashTable = 1 << 2,
+    Static          = 1 << 2,
+    InsideHashTable = 1 << 3,
 }
 
 public enum EntityType
@@ -54,7 +55,7 @@ public class Entity : MonoBehaviour {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int QueryNearbyEntities(float radius, int[] buffer) {
-        return Em.EntitiesTable.Query(transform.position, buffer, radius);
+    public int QueryNearbyEntities(float radius, int[] buffer, bool includeStatic = true) {
+        return Em.World.QueryNearbyEntities(transform.position, buffer, radius, includeStatic);
     }
 }
