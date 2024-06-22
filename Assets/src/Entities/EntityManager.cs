@@ -2,9 +2,10 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using static ArrayUtils;
 
 public struct MovedEntity {
-    public int     Id;
+    public uint     Id;
     public Vector3 NewPosition;
 }
 
@@ -18,22 +19,22 @@ public struct PackedEntity {
 public class EntityManager : MonoBehaviour {
     public World             World;
     public List<Entity>      BakedEntities;
-    public PackedEntity[]    Entities        = new PackedEntity[128];
-    public List<int>         DynamicEntities = new ();
     public List<MovedEntity> MovedEntities   = new ();
-    public int[]             RemoveQueue     = new int[128];
-    public int[]             FreeEntities    = new int[128];
-    public Dictionary<EntityType, List<int>> EntitiesByType = new();
-    public int               MaxEntitiesCount;
-    public int               FreeEntitiesCount;
-    public int               EntitiesToRemoveCount;
+    public Dictionary<EntityType, List<uint>> EntitiesByType = new();
+    public static PackedEntity[]    Entities        = new PackedEntity[128];
+    public static List<uint>         DynamicEntities = new ();
+    public static uint[]             RemoveQueue     = new uint[128];
+    public static uint[]             FreeEntities    = new uint[128];
+    public static uint               MaxEntitiesCount;
+    public static uint               FreeEntitiesCount;
+    public static uint               EntitiesToRemoveCount;
 
     private void Awake() {
         World.Create();
         var entityTypes = Enum.GetValues(typeof(EntityType));
 
         foreach(var type in entityTypes) {
-            EntitiesByType.Add((EntityType)type, new List<int>());
+            EntitiesByType.Add((EntityType)type, new List<uint>());
         }
     }
         
@@ -46,7 +47,7 @@ public class EntityManager : MonoBehaviour {
     }
     
     public void BakeEntity(Entity entity) {
-        var id = -1;
+        uint id = 0;
         if(FreeEntitiesCount > 0){
             id = FreeEntities[--FreeEntitiesCount];
         }else{
@@ -54,7 +55,7 @@ public class EntityManager : MonoBehaviour {
         }
         
         if(MaxEntitiesCount == Entities.Length) {
-            Array.Resize(ref Entities, MaxEntitiesCount << 1);
+            Resize(ref Entities, MaxEntitiesCount << 1);
         }
         
         Entities[id].Entity  = entity;
@@ -64,6 +65,7 @@ public class EntityManager : MonoBehaviour {
         
         entity.Id          = id;
         entity.Em          = this;
+        entity.World       = World;
 
         EntitiesByType[entity.Type].Add(id);
         
@@ -116,7 +118,7 @@ public class EntityManager : MonoBehaviour {
                                Quaternion orientation, 
                                Vector3 scale, 
                                Transform parent) {
-        var id = -1;
+        uint id = 0;
         
         if(FreeEntitiesCount > 0) {
             id = FreeEntities[--FreeEntitiesCount];
@@ -127,7 +129,7 @@ public class EntityManager : MonoBehaviour {
         var obj = Instantiate(prefab, position, orientation, parent);
         
         if(MaxEntitiesCount == Entities.Length) {
-            Array.Resize(ref Entities, MaxEntitiesCount << 1);
+            Resize(ref Entities, MaxEntitiesCount << 1);
         }
         
         Entities[id].Entity = obj;
@@ -137,6 +139,7 @@ public class EntityManager : MonoBehaviour {
         
         obj.Id          = id;
         obj.Em          = this;
+        obj.World       = World;
 
         EntitiesByType[obj.Type].Add(id);
         
@@ -168,9 +171,9 @@ public class EntityManager : MonoBehaviour {
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void DestroyEntity(int id) {
+    public void DestroyEntity(uint id) {
         if(EntitiesToRemoveCount == RemoveQueue.Length) {
-            Array.Resize(ref RemoveQueue, EntitiesToRemoveCount << 1);
+            Resize(ref RemoveQueue, EntitiesToRemoveCount << 1);
         }
         
         Entities[id].Alive = false;
@@ -178,12 +181,12 @@ public class EntityManager : MonoBehaviour {
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void DestroyEntityImmediate(int id) {
+    public void DestroyEntityImmediate(uint id) {
         var entity = Entities[id].Entity;
         
         if(entity != null){
             if(FreeEntitiesCount == FreeEntities.Length) {
-                Array.Resize(ref FreeEntities, FreeEntitiesCount << 1);
+                Resize(ref FreeEntities, FreeEntitiesCount << 1);
             }
 
             EntitiesByType[entity.Type].Remove(id);
@@ -208,7 +211,7 @@ public class EntityManager : MonoBehaviour {
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void DestroyAllEntities() {
-        for(var i = 0; i < MaxEntitiesCount; ++i) {
+        for(uint i = 0; i < MaxEntitiesCount; ++i) {
             DestroyEntityImmediate(i);
         }
         
@@ -242,23 +245,23 @@ public class EntityManager : MonoBehaviour {
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public (bool alive, Entity entity) GetEntity(int id) {
+    public (bool alive, Entity entity) GetEntity(uint id) {
         return (Entities[id].Alive, Entities[id].Entity);
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public (bool alive, T entity) GetEntity<T>(int id)
+    public (bool alive, T entity) GetEntity<T>(uint id)
     where T : Entity {
         return (Entities[id].Alive, (T)Entities[id].Entity);
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public EntityType GetType(int id) {
+    public EntityType GetType(uint id) {
         return Entities[id].Type;
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool IsAlive(int id) {
+    public bool IsAlive(uint id) {
         return Entities[id].Alive;
     }
 

@@ -2,20 +2,21 @@ using System;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using static Assertions;
+using static ArrayUtils;
 
 public class UnboundedSpatialTable : IDisposable {
     public struct EntityReference {
         public Vector3 Position;
-        public int Id;
+        public uint Id;
     }
     
     public EntityTable<Vector3> Positions;
     public int[] CellCount;
     public EntityReference[] EntityTable;
-    public int   Size;
+    public uint   Size;
     public float Spacing;
 
-    public UnboundedSpatialTable(int size, float spacing) {
+    public UnboundedSpatialTable(uint size, float spacing) {
         Size        = size;
         Spacing     = spacing;
         CellCount   = new int[size + 1];
@@ -28,17 +29,17 @@ public class UnboundedSpatialTable : IDisposable {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void AddEntity(int entity, Vector3 position) {
+    public void AddEntity(uint entity, Vector3 position) {
         Positions[entity] = position;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void RemoveEntity(int entity) {
+    public void RemoveEntity(uint entity) {
         Positions.Remove(entity);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void UpdatePosition(int entity, Vector3 newPos) {
+    public void UpdatePosition(uint entity, Vector3 newPos) {
         Assert(Positions.ContainsKey(entity));
         if (Positions.ContainsKey(entity) == false) {
             Debug.Log("False");
@@ -49,8 +50,8 @@ public class UnboundedSpatialTable : IDisposable {
     public void Rehash() {
         if(Positions.Count > Size + 1) {
             Size = Positions.Count;
-            Array.Resize(ref CellCount, Size + 1);
-            Array.Resize(ref EntityTable, Size);
+            Resize(ref CellCount, Size + 1);
+            Resize(ref EntityTable, Size);
         }
         Array.Clear(CellCount, 0, CellCount.Length);
         Array.Clear(EntityTable, 0, EntityTable.Length);
@@ -72,7 +73,7 @@ public class UnboundedSpatialTable : IDisposable {
         }
     }
 
-    public int Query(Vector3 position, int[] result, float radius, int count = 0) {
+    public uint Query(Vector3 position, uint[] result, float radius, uint count = 0) {
         var xmax = IntCoordinateSigned(position.x + radius);
         var ymax = IntCoordinateSigned(position.y + radius);
         var zmax = IntCoordinateSigned(position.z + radius);
@@ -127,15 +128,15 @@ public class UnboundedSpatialTable : IDisposable {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int Hash(int x, int y, int z) {
-        return Mathf.Abs((x * 92837111) ^ 
+        return (int)(Mathf.Abs((x * 92837111) ^ 
                          (y * 689287499) ^ 
-                         (z * 283923481)) % Size;
+                         (z * 283923481)) % Size);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int Hash(Vector3 position) {
-        return Mathf.Abs((IntCoordinate(position.x) * 92837111) ^ 
+        return (int)(Mathf.Abs((IntCoordinate(position.x) * 92837111) ^ 
                          (IntCoordinate(position.y) * 689287499) ^ 
-                         (IntCoordinate(position.z) * 283923481)) % Size;
+                         (IntCoordinate(position.z) * 283923481)) % Size);
     }
 }

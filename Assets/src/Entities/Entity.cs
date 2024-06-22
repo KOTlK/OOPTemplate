@@ -18,10 +18,11 @@ public enum EntityType
 }
 
 public class Entity : MonoBehaviour {
-    public int           Id;
+    public uint          Id;
     public EntityFlags   Flags;
     public EntityType    Type;
     public EntityManager Em;
+    public World         World;
     public bool          AutoBake;
     
     private void Awake() {
@@ -48,7 +49,7 @@ public class Entity : MonoBehaviour {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int QueryNearbyEntities(float radius, int[] buffer, bool includeStatic = true) {
-        return Em.World.QueryNearbyEntities(transform.position, buffer, radius, includeStatic);
+    public uint QueryNearbyEntities(float radius, uint[] buffer, bool includeStatic = true) {
+        return World.QueryNearbyEntities(transform.position, buffer, radius, includeStatic);
     }
 }
