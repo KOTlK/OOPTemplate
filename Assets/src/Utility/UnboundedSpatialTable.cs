@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using UnityEngine;
 using static Assertions;
 
-public class UnboundedSpatialTable {
+public class UnboundedSpatialTable : IDisposable {
     public struct EntityReference {
         public Vector3 Position;
         public int Id;
@@ -21,6 +21,10 @@ public class UnboundedSpatialTable {
         CellCount   = new int[size + 1];
         EntityTable = new EntityReference[size];
         Positions   = new EntityTable<Vector3>(size);
+    }
+
+    public void Dispose() {
+        Positions.Dispose();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

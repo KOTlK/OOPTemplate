@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using static Assertions;
 
-public class EntityTable<T> {
+public class EntityTable<T> : IDisposable {
     public struct KeyValue {
         public T    Value;
         public int  Key;
@@ -24,6 +24,17 @@ public class EntityTable<T> {
     public EntityTable(int startLength) {
         Items  = new KeyValue[startLength];
         Length = startLength;
+        Count = 0;
+    }
+
+    public void Dispose() {
+        for(var i = 0; i < Length; ++i) {
+            Items[i] = new KeyValue {
+                Value = default(T),
+                Key   = -1,
+                Exist = false
+            };
+        }
         Count = 0;
     }
 

@@ -8,6 +8,13 @@ public struct MovedEntity {
     public Vector3 NewPosition;
 }
 
+public struct PackedEntity {
+    public Entity        Entity;
+    public EntityManager Manager;
+    public EntityType    Type;
+    public bool          Alive;
+}
+
 public class EntityManager : MonoBehaviour {
     public World             World;
     public List<Entity>      BakedEntities;
@@ -16,12 +23,18 @@ public class EntityManager : MonoBehaviour {
     public List<MovedEntity> MovedEntities   = new ();
     public int[]             RemoveQueue     = new int[128];
     public int[]             FreeEntities    = new int[128];
+    public Dictionary<EntityType, List<int>> EntitiesByType = new();
     public int               MaxEntitiesCount;
     public int               FreeEntitiesCount;
     public int               EntitiesToRemoveCount;
 
     private void Awake() {
         World.Create();
+        var entityTypes = Enum.GetValues(typeof(EntityType));
+
+        foreach(var type in entityTypes) {
+            EntitiesByType.Add((EntityType)type, new List<int>());
+        }
     }
         
     public void BakeEntities() {
@@ -51,6 +64,8 @@ public class EntityManager : MonoBehaviour {
         
         entity.Id          = id;
         entity.Em          = this;
+
+        EntitiesByType[entity.Type].Add(id);
         
         if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             DynamicEntities.Add(id);
@@ -122,6 +137,8 @@ public class EntityManager : MonoBehaviour {
         
         obj.Id          = id;
         obj.Em          = this;
+
+        EntitiesByType[obj.Type].Add(id);
         
         if((obj.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             DynamicEntities.Add(id);
@@ -168,6 +185,8 @@ public class EntityManager : MonoBehaviour {
             if(FreeEntitiesCount == FreeEntities.Length) {
                 Array.Resize(ref FreeEntities, FreeEntitiesCount << 1);
             }
+
+            EntitiesByType[entity.Type].Remove(id);
             
             if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
                 DynamicEntities.Remove(id);
@@ -190,20 +209,15 @@ public class EntityManager : MonoBehaviour {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void DestroyAllEntities() {
         for(var i = 0; i < MaxEntitiesCount; ++i) {
-            var entity = Entities[i].Entity;
-            if(entity != null){
-                if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
-                    DynamicEntities.Remove(entity.Id);
-                }
-                
-                Entities[i].Entity = null;
-                entity.Destroy();
-            }
+            DestroyEntityImmediate(i);
         }
         
         MaxEntitiesCount      = 0;
         FreeEntitiesCount     = 0;
         EntitiesToRemoveCount = 0;
+        MovedEntities.Clear();
+        DynamicEntities.Clear();
+        World.Dispose();
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -246,5 +260,24 @@ public class EntityManager : MonoBehaviour {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsAlive(int id) {
         return Entities[id].Alive;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public IEnumerable<Entity> GetAllEntitiesWithType(EntityType type) {
+        for(var i = 0; i < MaxEntitiesCount; ++i) {
+            if(Entities[i].Type == type && Entities[i].Alive) {
+                yield return Entities[i].Entity;
+            }
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public IEnumerable<T> GetAllEntitiesWithType<T>(EntityType type) 
+    where T : Entity {
+        for(var i = 0; i < MaxEntitiesCount; ++i) {
+            if(Entities[i].Type == type && Entities[i].Alive) {
+                yield return (T)Entities[i].Entity;
+            }
+        }
     }
 }

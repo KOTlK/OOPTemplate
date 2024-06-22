@@ -1,7 +1,8 @@
 using UnityEngine;
+using System;
 using System.Runtime.CompilerServices;
 
-public class World : MonoBehaviour {
+public class World : MonoBehaviour, IDisposable {
     public int   StartDynamicSize;
     public int   StartStaticSize;
     public float DynamicSpacing;
@@ -9,6 +10,25 @@ public class World : MonoBehaviour {
     public UnboundedSpatialTable DynamicEntities;
     public UnboundedSpatialTable StaticEntities;
     public bool StaticEntitiesDirty = false;
+
+    public void Create() {
+        DynamicEntities = new UnboundedSpatialTable(StartDynamicSize, DynamicSpacing);
+        StaticEntities = new UnboundedSpatialTable(StartStaticSize, StaticSpacing);
+    }
+
+    public void Dispose() {
+        DynamicEntities.Dispose();
+        StaticEntities.Dispose();
+    }
+
+    public void Execute() {
+        if(StaticEntitiesDirty) {
+            StaticEntities.Rehash();
+            StaticEntitiesDirty = false;
+        }
+
+        DynamicEntities.Rehash();
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void AddDynamicEntity(int id, Vector3 position) {
@@ -47,19 +67,4 @@ public class World : MonoBehaviour {
             return dynamicCount;
         }
     }
-
-    public void Create() {
-        DynamicEntities = new UnboundedSpatialTable(StartDynamicSize, DynamicSpacing);
-        StaticEntities = new UnboundedSpatialTable(StartStaticSize, StaticSpacing);
-    }
-
-    public void Execute() {
-        if(StaticEntitiesDirty) {
-            StaticEntities.Rehash();
-            StaticEntitiesDirty = false;
-        }
-
-        DynamicEntities.Rehash();
-    }
-
 }

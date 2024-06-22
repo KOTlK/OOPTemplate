@@ -17,13 +17,6 @@ public enum EntityType
     // types goes here
 }
 
-public struct PackedEntity {
-    public Entity        Entity;
-    public EntityManager Manager;
-    public EntityType    Type;
-    public bool          Alive;
-}
-
 public class Entity : MonoBehaviour {
     public int           Id;
     public EntityFlags   Flags;
