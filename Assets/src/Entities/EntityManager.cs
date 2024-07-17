@@ -6,9 +6,10 @@ using static ArrayUtils;
 
 public struct MovedEntity {
     public uint     Id;
-    public Vector3 NewPosition;
+    public Vector3  NewPosition;
 }
 
+[Serializable]
 public struct PackedEntity {
     public Entity        Entity;
     public EntityManager Manager;
@@ -21,13 +22,14 @@ public class EntityManager : MonoBehaviour {
     public List<Entity>      BakedEntities;
     public List<MovedEntity> MovedEntities   = new ();
     public Dictionary<EntityType, List<uint>> EntitiesByType = new();
-    public static PackedEntity[]    Entities        = new PackedEntity[128];
-    public static List<uint>         DynamicEntities = new ();
-    public static uint[]             RemoveQueue     = new uint[128];
-    public static uint[]             FreeEntities    = new uint[128];
-    public static uint               MaxEntitiesCount;
-    public static uint               FreeEntitiesCount;
-    public static uint               EntitiesToRemoveCount;
+    public PackedEntity[]    Entities        = new PackedEntity[128];
+    public List<uint>        DynamicEntities = new ();
+    public uint[]            RemoveQueue     = new uint[128];
+    public uint[]            FreeEntities    = new uint[128];
+    [HideInInspector] 
+    public uint              MaxEntitiesCount = 1;
+    public uint              FreeEntitiesCount;
+    public uint              EntitiesToRemoveCount;
 
     private void Awake() {
         World.Create();
@@ -215,7 +217,7 @@ public class EntityManager : MonoBehaviour {
             DestroyEntityImmediate(i);
         }
         
-        MaxEntitiesCount      = 0;
+        MaxEntitiesCount      = 1;
         FreeEntitiesCount     = 0;
         EntitiesToRemoveCount = 0;
         MovedEntities.Clear();
