@@ -5,6 +5,8 @@ using UnityEngine;
 using static ArrayUtils;
 
 public class EntitiesDebugger : MonoBehaviour {
+    private delegate bool ValidateValue<T>(string str, out T value);
+    
     public EntityManager EntityManager;
     public Camera        DebugCamera;
     public Camera        PreviousCamera;
@@ -25,7 +27,8 @@ public class EntitiesDebugger : MonoBehaviour {
     public float AdditionalFieldOffset = 0.1f;
     public float AdditionalFieldWidth  = 0.2f;
     public float AdditionalFieldHeight = 0.035f;
-    public float VectorInputWidth = 0.07f;
+    public float SingleValueOffset = 0.23f;
+    public float SingleValueWidth  = 0.06f;
 
     public int    ItemsPerScroll = 1;
     public uint   FirstEntity;
@@ -34,6 +37,12 @@ public class EntitiesDebugger : MonoBehaviour {
     public uint   SortedEntitiesCount;
     public uint   SelectedEntity;
     public uint   PreviousEntity;
+    public string StringBuffer;
+
+    public float  GoToOffset  = 0.23f;
+    public float  GoToWidth   = 0.06f;
+    public float  GoToUp      = 5f;
+    public float  GoToForward = -5f;
 
     private void Awake() {
         DebugCamera.gameObject.SetActive(false);
@@ -243,16 +252,6 @@ public class EntitiesDebugger : MonoBehaviour {
         SortedEntitiesCount = 0;
     }
 
-    private string px = "0";
-    private string py = "0";
-    private string pz = "0";
-    private string rx = "0";
-    private string ry = "0";
-    private string rz = "0";
-    private string sx = "0";
-    private string sy = "0";
-    private string sz = "0";
-
     private void DisplayMember(MemberInfo member, 
                                Entity entity, 
                                ref float currentHeight, 
@@ -261,26 +260,49 @@ public class EntitiesDebugger : MonoBehaviour {
                                float additionalFieldOffset,
                                float additionalFieldWidth,
                                float additionalFieldHeight) {
+        var gotoOffset = Screen.width * GoToOffset;
+        var gotoWidth  = Screen.width * GoToWidth;
+        var singleValueOffset = Screen.width * SingleValueOffset;
+        var singleValueWidth  = Screen.width * SingleValueWidth;
         GUI.Label(new Rect(0, currentHeight, width, height), member.Name);
 
-        switch(member.Name) {
-            case "transform": {
-                var t = (Transform)((PropertyInfo)member).GetValue(entity.transform);
+        object memberObject;
+        
+        if ((member.MemberType & MemberTypes.Field) == MemberTypes.Field) {
+            memberObject = ((FieldInfo)member).GetValue(entity);
+        }
+        else if ((member.MemberType & MemberTypes.Property) == MemberTypes.Property) {
+            memberObject = ((PropertyInfo)member).GetValue(entity);
+        }
+        else {
+            memberObject = null;
+        }
+
+        var memberType = memberObject.GetType();
+        var memberTypeName = memberType.ToString();
+
+        if (memberType.IsSubclassOf(typeof(Entity))) {
+            DrawGoTo((MonoBehaviour)memberObject,
+                     gotoOffset,
+                     currentHeight,
+                     gotoWidth,
+                     additionalFieldHeight);
+        } else if (memberType.IsSubclassOf(typeof(MonoBehaviour))) {
+            DrawGoTo((MonoBehaviour)memberObject,
+                     gotoOffset,
+                     currentHeight,
+                     gotoWidth,
+                     additionalFieldHeight);
+        }
+
+        switch (memberTypeName) {
+            case "UnityEngine.Transform": {
+                var t = (Transform)memberObject;
                 var offset = additionalFieldOffset;
                 var position = t.position;
                 var rotation = t.rotation.eulerAngles;
                 var scale    = t.localScale;
 
-                px = position.x.ToString();
-                py = position.y.ToString();
-                pz = position.z.ToString();
-                rx = rotation.x.ToString();
-                ry = rotation.y.ToString();
-                rz = rotation.z.ToString();
-                sx = scale.x.ToString();
-                sy = scale.y.ToString();
-                sz = scale.z.ToString();
-                
                 //Draw position
                 currentHeight += additionalFieldHeight;
 
@@ -288,12 +310,12 @@ public class EntitiesDebugger : MonoBehaviour {
                 currentHeight += additionalFieldHeight;
                 offset += additionalFieldOffset;
 
-                DrawVector3Input(ref px,
-                                 ref py,
-                                 ref pz,
-                                 ref currentHeight,
-                                 offset,
-                                 additionalFieldHeight);
+                position = DrawVector3Input(position,
+                                            ref StringBuffer,
+                                            ref currentHeight,
+                                            offset,
+                                            singleValueOffset,
+                                            additionalFieldHeight);
                 
                 offset -= additionalFieldOffset;
 
@@ -304,12 +326,12 @@ public class EntitiesDebugger : MonoBehaviour {
                 currentHeight += additionalFieldHeight;
                 offset += additionalFieldOffset;
 
-                DrawVector3Input(ref rx,
-                                 ref ry,
-                                 ref rz,
-                                 ref currentHeight,
-                                 offset,
-                                 additionalFieldHeight);
+                rotation = DrawVector3Input(rotation,
+                                            ref StringBuffer,
+                                            ref currentHeight,
+                                            offset,
+                                            singleValueOffset,
+                                            additionalFieldHeight);
 
                 offset -= additionalFieldOffset;
 
@@ -320,106 +342,245 @@ public class EntitiesDebugger : MonoBehaviour {
                 currentHeight += additionalFieldHeight;
                 offset += additionalFieldOffset;
 
-                DrawVector3Input(ref sx,
-                                 ref sy,
-                                 ref sz,
-                                 ref currentHeight,
-                                 offset,
-                                 additionalFieldHeight);
+                scale = DrawVector3Input(scale,
+                                         ref StringBuffer,
+                                         ref currentHeight,
+                                         offset,
+                                         singleValueOffset,
+                                         additionalFieldHeight);
 
-                FormatTransform();
+                t.position = position;
+                t.rotation = Quaternion.Euler(rotation);
+                t.localScale = scale;
+            }
+            break;    
+            case "System.Single": {
+                var value = DrawInputValue((float)memberObject,
+                                                  ValidateSingle,
+                                                  ref StringBuffer,
+                                                  singleValueOffset,
+                                                  currentHeight,
+                                                  singleValueWidth,
+                                                  additionalFieldHeight);
 
-                t.position = new Vector3(float.Parse(px), 
-                                         float.Parse(py), 
-                                         float.Parse(pz));
+                SetMemberValue(member, entity, value);
+            }
+            break;
+            case "System.Int32": {
+                var value = DrawInputValue((int)memberObject,
+                                                ValidateInt,
+                                                ref StringBuffer,
+                                                singleValueOffset,
+                                                currentHeight,
+                                                singleValueWidth,
+                                                additionalFieldHeight);
 
-                t.rotation = Quaternion.Euler(float.Parse(rx),
-                                              float.Parse(ry),
-                                              float.Parse(rz));
+                SetMemberValue(member, entity, value);
+            }
+            break;
+            case "System.UInt32": {
+                var value = DrawInputValue((uint)memberObject,
+                                                 ValidateUInt,
+                                                 ref StringBuffer,
+                                                 singleValueOffset,
+                                                 currentHeight,
+                                                 singleValueWidth,
+                                                 additionalFieldHeight);
 
-                t.localScale = new Vector3(float.Parse(sx),
-                                           float.Parse(sy),
-                                           float.Parse(sz));
+                SetMemberValue(member, entity, value);
+            }
+            break;
+            case "System.Int64": {
+                var value = DrawInputValue((long)memberObject,
+                                                 ValidateLong,
+                                                 ref StringBuffer,
+                                                 singleValueOffset,
+                                                 currentHeight,
+                                                 singleValueWidth,
+                                                 additionalFieldHeight);
+
+                SetMemberValue(member, entity, value);
+            }
+            break;
+            case "System.UInt64": {
+                var value = DrawInputValue((ulong)memberObject,
+                                                  ValidateULong,
+                                                  ref StringBuffer,
+                                                  singleValueOffset,
+                                                  currentHeight,
+                                                  singleValueWidth,
+                                                  additionalFieldHeight);
+
+                SetMemberValue(member, entity, value);
+            }
+            break;
+            case "System.Double": {
+                var value = DrawInputValue((double)memberObject,
+                                                   ValidateDouble,
+                                                   ref StringBuffer,
+                                                   singleValueOffset,
+                                                   currentHeight,
+                                                   singleValueWidth,
+                                                   additionalFieldHeight);
+
+                SetMemberValue(member, entity, value);
+            }
+            break;
+            case "System.Boolean": {
+                var current = (bool)memberObject;
+                var value = GUI.Toggle(new Rect(singleValueOffset,
+                                                currentHeight,
+                                                singleValueWidth,
+                                                additionalFieldHeight), current, "");
+                SetMemberValue(member, entity, value);
+            }
+            break;
+            case "System.String": {
+                GUI.Label(new Rect(singleValueOffset,
+                                   currentHeight,
+                                   singleValueWidth,
+                                   additionalFieldHeight), (string)memberObject);
+            }
+            break;
+            default: {
+                // Debug.Log(memberTypeName);
             }
             break;
         }
     }
 
-    private void DrawVector3Input(ref string x, 
-                                  ref string y, 
-                                  ref string z,
-                                  ref float currentHeight,
-                                  float offset,
-                                  float height) {
-        var width = Screen.width * VectorInputWidth;
 
-        x = GUI.TextField(new Rect(offset,
-                                   currentHeight,
-                                   width,
-                                   height), x);
-
-        currentHeight += height;
-
-        y = GUI.TextField(new Rect(offset,
-                                   currentHeight,
-                                   width,
-                                   height), y);
-        
-        currentHeight += height;
-
-        z = GUI.TextField(new Rect(offset,
-                                   currentHeight,
-                                   width,
-                                   height), z);
+    private bool ValidateInt(string str, out int value) {
+        return int.TryParse(str, out value);
+    }
+    
+    private bool ValidateUInt(string str, out uint value) {
+        return uint.TryParse(str, out value);
     }
 
+    private bool ValidateLong(string str, out long value) {
+        return long.TryParse(str, out value);
+    }
+    
+    private bool ValidateULong(string str, out ulong value) {
+        return ulong.TryParse(str, out value);
+    }
 
-    // =)
-    private void FormatTransform() {
-        if(px.EndsWith('.') || px.EndsWith(',')) {
-            px.Remove(px.Length - 1);
-            px += '1';
+    private bool ValidateSingle(string str, out float value) {
+        if(str.EndsWith('.') || str.EndsWith(',')) {
+            str.Remove(str.Length - 1);
+            str += '1';
+        }
+        return float.TryParse(str, out value);
+    }
+
+    private bool ValidateDouble(string str, out double value) {
+        if(str.EndsWith('.') || str.EndsWith(',')) {
+            str.Remove(str.Length - 1);
+            str += '1';
+        }
+        return double.TryParse(str, out value);
+    }
+
+    private T DrawInputValue<T>(T input,
+                                ValidateValue<T> validationFunc,
+                                ref string inputOutput,
+                                float x,
+                                float y,
+                                float width,
+                                float height) {
+        var result = input;
+        inputOutput = result.ToString();
+        inputOutput = GUI.TextField(new Rect(x,
+                                            y,
+                                            width,
+                                            height), inputOutput);
+        var valueValid = validationFunc(inputOutput, out var value);
+        if (valueValid) {
+            result = value;
         }
 
-        if(py.EndsWith('.') || py.EndsWith(',')) {
-            py.Remove(py.Length - 1);
-            py += '1';
+        return result;
+    }
+
+    private void SetMemberValue(MemberInfo member,
+                                object obj,
+                                object value) {
+        if ((member.MemberType & MemberTypes.Field) == MemberTypes.Field) {
+            ((FieldInfo)member).SetValue(obj, value);
+        } else if ((member.MemberType & MemberTypes.Property) == MemberTypes.Property) {
+            var setMethod = ((PropertyInfo)member).GetSetMethod();
+            if (setMethod != null) {
+                ((PropertyInfo)member).SetValue(obj, value);
+            }
+        }    
+    }
+
+    private Vector3 DrawVector3Input(Vector3 input,
+                                     ref string inputOutput,
+                                     ref float currentHeight,
+                                     float x,
+                                     float width,
+                                     float height) {
+        var result = input;
+        inputOutput = result.x.ToString();
+        inputOutput = GUI.TextField(new Rect(x,
+                                             currentHeight,
+                                             width,
+                                             height), inputOutput);
+
+        var valueValid = ValidateSingle(inputOutput, out var vx);
+        if (valueValid) {
+            result.x = vx;
         }
 
-        if(pz.EndsWith('.') || pz.EndsWith(',')) {
-            pz.Remove(pz.Length - 1);
-            pz += '1';
+        currentHeight += height;
+
+        inputOutput = result.y.ToString();
+        inputOutput = GUI.TextField(new Rect(x,
+                                             currentHeight,
+                                             width,
+                                             height), inputOutput);
+
+        valueValid = ValidateSingle(inputOutput, out var vy);
+        if (valueValid) {
+            result.y = vy;
         }
 
-        if(sx.EndsWith('.') || sx.EndsWith(',')) {
-            sx.Remove(sx.Length - 1);
-            sx += '1';
+        currentHeight += height;
+
+        inputOutput = result.z.ToString();
+        inputOutput = GUI.TextField(new Rect(x,
+                                             currentHeight,
+                                             width,
+                                             height), inputOutput);
+
+        valueValid = ValidateSingle(inputOutput, out var vz);
+        if (valueValid) {
+            result.z = vz;
         }
 
-        if(sy.EndsWith('.') || sy.EndsWith(',')) {
-            sy.Remove(sy.Length - 1);
-            sy += '1';
+        return result;
+    }
+
+    private void DrawGoTo(MonoBehaviour e,
+                          float x,
+                          float y,
+                          float width,
+                          float height) {
+        if(GUI.Button(new Rect(x,
+                               y,
+                               width,
+                               height), "Go To")) {
+            var t = e.transform;
+            var p = t.position;
+            p.y += GoToUp;
+            p.z += GoToForward;
+
+            DebugCamera.transform.position = p;
+            DebugCamera.transform.LookAt(t.position);
         }
 
-        if(sz.EndsWith('.') || sz.EndsWith(',')) {
-            sz.Remove(sz.Length - 1);
-            sz += '1';
-        }
-
-        if(rx.EndsWith('.') || rx.EndsWith(',')) {
-            rx.Remove(rx.Length - 1);
-            rx += '1';
-        }
-
-        if(ry.EndsWith('.') || ry.EndsWith(',')) {
-            ry.Remove(ry.Length - 1);
-            ry += '1';
-        }
-
-        if(rz.EndsWith('.') || rz.EndsWith(',')) {
-            rz.Remove(rz.Length - 1);
-            rz += '1';
-        }
     }
 
     private static bool IsUnityField(MemberInfo field) {
