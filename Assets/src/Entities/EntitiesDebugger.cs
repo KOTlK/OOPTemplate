@@ -14,9 +14,10 @@ public class EntitiesDebugger : MonoBehaviour {
     public float         CameraFastSpeed    = 15f;
     public float         CameraSensitivity  = 120f; // angle per second
     public float         RollSensitivity    = 50f;
-    public bool          Enabled = false;
+    public bool          Enabled = false; // (1)
     public bool          SortEntities = false;
     public KeyCode       KeyToEnable = KeyCode.BackQuote;
+    //public KeyCode MouseLookKey = KeyCode.Mouse1; // Whenever I enter play mode and exit it, value of this and (1) randomly changes. So, mouse look key is hardcoded.
     public EntityType    SortByType;
     public float         EntitiesListWidth = 0.15f;
     public float         EntityHeight = 0.06f;
@@ -25,7 +26,6 @@ public class EntitiesDebugger : MonoBehaviour {
     public float FieldWidth  = 0.20f;
     public float FieldHeight = 0.045f;
     public float AdditionalFieldOffset = 0.1f;
-    public float AdditionalFieldWidth  = 0.2f;
     public float AdditionalFieldHeight = 0.035f;
     public float SingleValueOffset = 0.23f;
     public float SingleValueWidth  = 0.06f;
@@ -36,17 +36,32 @@ public class EntitiesDebugger : MonoBehaviour {
     public uint[] SortedEntities = new uint[1024];
     public uint   SortedEntitiesCount;
     public uint   SelectedEntity;
-    public uint   PreviousEntity;
     public string StringBuffer;
 
-    public float  GoToOffset  = 0.23f;
-    public float  GoToWidth   = 0.06f;
-    public float  GoToUp      = 5f;
-    public float  GoToForward = -5f;
+    public float GoToOffset   = 0.16f;
+    public float SelectOffset = 0.23f;
+    public float SelectWidth  = 0.07f;
+    public float GoToWidth    = 0.06f;
+    public float GoToUp       = 5f;
+    public float GoToForward  = -5f;
+
+    public float EnumOffset = 0.09f;
+    public float EnumWidth  = 0.2f;
+    public float EnumElementsOffset = 0.08f;
+    public float EnumElementHeight = 0.04f;
+    public float EnumElementWidth  = 0.14f;
+
+    public object     CurrentlyDrawingEnum = null;
+    public Type       CurrentEnumType;
+    public MemberInfo CurrentEnumInfo;
+    public Entity     CurrentEnumEntity;
+    public float      EnumDrawHeight;
+    public bool       EnumDrawnThisFrame = false;
 
     private void Awake() {
         DebugCamera.gameObject.SetActive(false);
     }
+
 
     private void Update() {
         if(Input.GetKeyDown(KeyToEnable)) {
@@ -62,51 +77,54 @@ public class EntitiesDebugger : MonoBehaviour {
         }
 
         if(Enabled) {
-            //Rotate and move camera
-            var t = DebugCamera.transform;
-            var z = Input.GetAxisRaw("Vertical");
-            var x = Input.GetAxisRaw("Horizontal");
-            var y = 0f;
-            var forward = t.forward;
-            var right   = t.right;
-            var up  = t.up;
-            var speedUpCamera = Input.GetKey(KeyCode.LeftShift);
-            var cameraSpeed = speedUpCamera ? CameraFastSpeed : CameraDefaultSpeed;
-            var mousex = Input.GetAxisRaw("Mouse X") * CameraSensitivity * Time.deltaTime;
-            var mousey = -Input.GetAxisRaw("Mouse Y") * CameraSensitivity * Time.deltaTime;
-            var mousez = 0f;
-            var currentRotation = t.rotation;
+            if (Input.GetKey(KeyCode.Mouse1)) {
+                //Rotate and move camera
+                var t = DebugCamera.transform;
+                var z = Input.GetAxisRaw("Vertical");
+                var x = Input.GetAxisRaw("Horizontal");
+                var y = 0f;
+                var forward = t.forward;
+                var right   = t.right;
+                var up  = t.up;
+                var speedUpCamera = Input.GetKey(KeyCode.LeftShift);
+                var cameraSpeed = speedUpCamera ? CameraFastSpeed : CameraDefaultSpeed;
+                var mousex = Input.GetAxisRaw("Mouse X") * CameraSensitivity * Time.deltaTime;
+                var mousey = -Input.GetAxisRaw("Mouse Y") * CameraSensitivity * Time.deltaTime;
+                var mousez = 0f;
+                var currentRotation = t.rotation;
 
-            if(Input.GetKey(KeyCode.Q)) {
-                mousez += 1f;
+                if(Input.GetKey(KeyCode.Q)) {
+                    mousez += 1f;
+                }
+
+                if(Input.GetKey(KeyCode.E)) {
+                    mousez -= 1f;
+                }
+
+                mousez *= RollSensitivity * Time.deltaTime;
+                
+                var inputRotation = Quaternion.Euler(mousey, mousex, mousez);
+                currentRotation *= inputRotation;
+
+                t.rotation = currentRotation;
+
+                if(Input.GetKey(KeyCode.Space)) {
+                    y += 1f;
+                }
+
+                if(Input.GetKey(KeyCode.LeftControl)) {
+                    y -= 1f;
+                }
+
+
+                var direction = new Vector3(x, y, z).normalized * cameraSpeed * Time.deltaTime;
+                forward *= direction.z;
+                right   *= direction.x;
+                up      *= direction.y;
+
+                t.position += forward + right + up;
             }
-
-            if(Input.GetKey(KeyCode.E)) {
-                mousez -= 1f;
-            }
-
-            mousez *= RollSensitivity * Time.deltaTime;
             
-            var inputRotation = Quaternion.Euler(mousey, mousex, mousez);
-            currentRotation *= inputRotation;
-
-            t.rotation = currentRotation;
-
-            if(Input.GetKey(KeyCode.Space)) {
-                y += 1f;
-            }
-
-            if(Input.GetKey(KeyCode.LeftControl)) {
-                y -= 1f;
-            }
-
-
-            var direction = new Vector3(x, y, z).normalized * cameraSpeed * Time.deltaTime;
-            forward *= direction.z;
-            right   *= direction.x;
-            up      *= direction.y;
-
-            t.position += forward + right + up;
         }
     }
 
@@ -122,9 +140,9 @@ public class EntitiesDebugger : MonoBehaviour {
             var descriptionWidth = screenWidth * DescriptionWidth;
             var descriptionStart = screenWidth - descriptionWidth;
             var additionalFieldOffset = descriptionWidth * AdditionalFieldOffset;
-            var additionalFieldWidth  = screenWidth * AdditionalFieldWidth;
             var additionalFieldHeight = screenHeight * AdditionalFieldHeight;
             var mousePosition    = Input.mousePosition;
+            EnumDrawnThisFrame = false;
 
             ClearSortedEntities();
 
@@ -134,7 +152,10 @@ public class EntitiesDebugger : MonoBehaviour {
 
             GUI.BeginGroup(entitiesListRect); //Entities List
 
-            GUI.BeginGroup(new Rect(0, currentEntitiesListHeight, screenWidth * EntitiesListWidth, screenHeight)); // Sorted Entities
+            GUI.BeginGroup(new Rect(0, 
+                                    currentEntitiesListHeight, 
+                                    screenWidth * EntitiesListWidth, 
+                                    screenHeight)); // Sorted Entities
 
             for(uint i = 0; i < EntityManager.MaxEntitiesCount; ++i) {
                 if(currentEntitiesListHeight > screenHeight)
@@ -167,7 +188,6 @@ public class EntitiesDebugger : MonoBehaviour {
             for(var i = FirstEntity; i < SortedEntitiesCount; ++i) {
                 if(GUI.Button(new Rect(0, currentEntitiesListHeight, entityWidth, entityHeight), 
                               $"{EntityManager.Entities[SortedEntities[i]].Type}")) {
-                    PreviousEntity = SelectedEntity;
                     SelectedEntity = SortedEntities[i];
                 }
 
@@ -227,12 +247,25 @@ public class EntitiesDebugger : MonoBehaviour {
                                   fieldWidth, 
                                   fieldHeight,
                                   additionalFieldOffset,
-                                  additionalFieldWidth,
                                   additionalFieldHeight);
                     currentFieldHeight += fieldHeight;
 
                     if (currentFieldHeight > screenHeight)
                         break;
+                }
+                
+                var enumOffset = screenWidth * EnumElementsOffset;
+                var enumElementHeight = screenHeight * EnumElementHeight;
+                var enumElementWidth  = screenWidth * EnumElementWidth;
+                
+                if(CurrentlyDrawingEnum != null && EnumDrawnThisFrame == false) {
+                    DrawEnum(CurrentEnumInfo,
+                             CurrentEnumEntity,
+                             enumOffset,
+                             EnumDrawHeight,
+                             enumElementWidth,
+                             enumElementHeight);
+                    EnumDrawnThisFrame = true;
                 }
 
                 GUI.EndGroup(); //Entity Description
@@ -258,38 +291,73 @@ public class EntitiesDebugger : MonoBehaviour {
                                float width, 
                                float height,
                                float additionalFieldOffset,
-                               float additionalFieldWidth,
                                float additionalFieldHeight) {
         var gotoOffset = Screen.width * GoToOffset;
         var gotoWidth  = Screen.width * GoToWidth;
         var singleValueOffset = Screen.width * SingleValueOffset;
         var singleValueWidth  = Screen.width * SingleValueWidth;
+        var selectOffset      = Screen.width * SelectOffset;
+        var selectWidth       = Screen.width * SelectWidth;
+        var enumOffset        = Screen.width * EnumOffset;
+        var enumWidth         = Screen.width * EnumWidth;
+        var enumElementHeight = Screen.height * EnumElementHeight;
+        var enumElementWidth  = Screen.width * EnumElementWidth;
+        
         GUI.Label(new Rect(0, currentHeight, width, height), member.Name);
 
-        object memberObject;
-        
-        if ((member.MemberType & MemberTypes.Field) == MemberTypes.Field) {
-            memberObject = ((FieldInfo)member).GetValue(entity);
-        }
-        else if ((member.MemberType & MemberTypes.Property) == MemberTypes.Property) {
-            memberObject = ((PropertyInfo)member).GetValue(entity);
-        }
-        else {
-            memberObject = null;
-        }
-
-        var memberType = memberObject.GetType();
+        var (memberObject, memberType) = GetMemberObject(member, entity);
         var memberTypeName = memberType.ToString();
 
-        if (memberType.IsSubclassOf(typeof(Entity))) {
+
+        if (memberType.IsEnum) {
+            if(GUI.Button(new Rect(enumOffset,
+                                   currentHeight,
+                                   enumWidth,
+                                   additionalFieldHeight), memberObject.ToString())) {
+                if(CurrentlyDrawingEnum == null) {
+                    CurrentlyDrawingEnum = memberObject;
+                    CurrentEnumType = memberType;
+                    EnumDrawHeight = currentHeight + enumElementHeight;
+                    CurrentEnumInfo = member;
+                    CurrentEnumEntity = entity;
+                } else if(System.Object.Equals(CurrentlyDrawingEnum, memberObject)) {
+                    CurrentlyDrawingEnum = null;
+                    CurrentEnumType = null;
+                    EnumDrawHeight = currentHeight + enumElementHeight;
+                    CurrentEnumEntity = entity;
+                } else {
+                    CurrentlyDrawingEnum = memberObject;
+                    CurrentEnumType = memberType;
+                    EnumDrawHeight = currentHeight + enumElementHeight;
+                    CurrentEnumInfo = member;
+                    CurrentEnumEntity = entity;
+                }
+            }
+            if(CurrentlyDrawingEnum != null && System.Object.Equals(CurrentlyDrawingEnum, memberObject)) {
+                EnumDrawHeight = currentHeight + enumElementHeight;
+            }
+        } else if (memberType.IsSubclassOf(typeof(Entity))) {
             DrawGoTo((MonoBehaviour)memberObject,
                      gotoOffset,
                      currentHeight,
                      gotoWidth,
                      additionalFieldHeight);
+            
+            if(GUI.Button(new Rect(selectOffset,
+                                   currentHeight,
+                                   selectWidth,
+                                   additionalFieldHeight), "Select")) {
+                SelectedEntity = ((Entity)memberObject).Id;
+            }
         } else if (memberType.IsSubclassOf(typeof(MonoBehaviour))) {
             DrawGoTo((MonoBehaviour)memberObject,
-                     gotoOffset,
+                     selectOffset,
+                     currentHeight,
+                     gotoWidth,
+                     additionalFieldHeight);
+        } else if (memberType.IsSubclassOf(typeof(Component))) {
+            DrawGoTo((Component)memberObject,
+                     selectOffset,
                      currentHeight,
                      gotoWidth,
                      additionalFieldHeight);
@@ -314,7 +382,7 @@ public class EntitiesDebugger : MonoBehaviour {
                                             ref StringBuffer,
                                             ref currentHeight,
                                             offset,
-                                            singleValueOffset,
+                                            singleValueWidth,
                                             additionalFieldHeight);
                 
                 offset -= additionalFieldOffset;
@@ -330,7 +398,7 @@ public class EntitiesDebugger : MonoBehaviour {
                                             ref StringBuffer,
                                             ref currentHeight,
                                             offset,
-                                            singleValueOffset,
+                                            singleValueWidth,
                                             additionalFieldHeight);
 
                 offset -= additionalFieldOffset;
@@ -346,7 +414,7 @@ public class EntitiesDebugger : MonoBehaviour {
                                          ref StringBuffer,
                                          ref currentHeight,
                                          offset,
-                                         singleValueOffset,
+                                         singleValueWidth,
                                          additionalFieldHeight);
 
                 t.position = position;
@@ -563,7 +631,7 @@ public class EntitiesDebugger : MonoBehaviour {
         return result;
     }
 
-    private void DrawGoTo(MonoBehaviour e,
+    private void DrawGoTo(Component e,
                           float x,
                           float y,
                           float width,
@@ -581,6 +649,61 @@ public class EntitiesDebugger : MonoBehaviour {
             DebugCamera.transform.LookAt(t.position);
         }
 
+    }
+
+    private void DrawEnum(MemberInfo member,
+                          Entity entity,
+                          float x,
+                          float y,
+                          float elementWidth,
+                          float elementHeight) {
+        var (memberObject, memberType) = GetMemberObject(member, entity);
+        var currentEnumHeight = y;
+        var values = Enum.GetValues(memberType);
+        var currentValue = (int)memberObject;
+        
+        GUI.Box(new Rect(x,
+                         y,
+                         elementWidth,
+                         elementHeight * values.Length), GUIContent.none, new GUIStyle() {
+            normal = new GUIStyleState() {
+                background = Texture2D.grayTexture
+            }
+        });
+        foreach(var value in values) {
+            var intValue = (int)value;
+            
+            if(GUI.Button(new Rect(x,
+                                   currentEnumHeight,
+                                   elementWidth,
+                                   elementHeight), value.ToString())) {
+                if(intValue == 0) {
+                    currentValue = 0;
+                } else if(memberType.GetCustomAttributes<FlagsAttribute>().Any()) {
+                    currentValue ^= intValue;
+                } else {
+                    currentValue = intValue;
+                }
+                SetMemberValue(member, entity, currentValue);
+            }
+            currentEnumHeight += elementHeight;
+        }
+    }
+
+    private static (object, Type) GetMemberObject(MemberInfo member, object entity) {
+        object memberObject;
+        
+        if ((member.MemberType & MemberTypes.Field) == MemberTypes.Field) {
+            memberObject = ((FieldInfo)member).GetValue(entity);
+        }
+        else if ((member.MemberType & MemberTypes.Property) == MemberTypes.Property) {
+            memberObject = ((PropertyInfo)member).GetValue(entity);
+        }
+        else {
+            memberObject = null;
+        }
+
+        return (memberObject, memberObject.GetType());
     }
 
     private static bool IsUnityField(MemberInfo field) {
