@@ -62,18 +62,21 @@ public class EntitiesDebugger : MonoBehaviour {
         DebugCamera.gameObject.SetActive(false);
     }
 
+    public void Switch() {
+        Enabled = !Enabled;
+        if(Enabled) {
+            PreviousCamera = Camera.main;
+            Camera.main.gameObject.SetActive(false);
+            DebugCamera.gameObject.SetActive(true);
+        } else {
+            PreviousCamera.gameObject.SetActive(true);
+            DebugCamera.gameObject.SetActive(false);
+        }
+    }
 
     private void Update() {
         if(Input.GetKeyDown(KeyToEnable)) {
-            Enabled = !Enabled;
-            if(Enabled) {
-                PreviousCamera = Camera.main;
-                Camera.main.gameObject.SetActive(false);
-                DebugCamera.gameObject.SetActive(true);
-            } else {
-                PreviousCamera.gameObject.SetActive(true);
-                DebugCamera.gameObject.SetActive(false);
-            }
+            Switch();
         }
 
         if(Enabled) {
@@ -85,7 +88,7 @@ public class EntitiesDebugger : MonoBehaviour {
                 var y = 0f;
                 var forward = t.forward;
                 var right   = t.right;
-                var up  = t.up;
+                var up      = t.up;
                 var speedUpCamera = Input.GetKey(KeyCode.LeftShift);
                 var cameraSpeed = speedUpCamera ? CameraFastSpeed : CameraDefaultSpeed;
                 var mousex = Input.GetAxisRaw("Mouse X") * CameraSensitivity * Time.deltaTime;
@@ -259,12 +262,88 @@ public class EntitiesDebugger : MonoBehaviour {
                 var enumElementWidth  = screenWidth * EnumElementWidth;
                 
                 if(CurrentlyDrawingEnum != null && EnumDrawnThisFrame == false) {
-                    DrawEnum(CurrentEnumInfo,
-                             CurrentEnumEntity,
-                             enumOffset,
-                             EnumDrawHeight,
-                             enumElementWidth,
-                             enumElementHeight);
+                    var intType = Enum.GetUnderlyingType(CurrentEnumType).ToString();
+
+                    switch(intType) {
+                        case "System.Int32" : {
+                            DrawEnumInt(CurrentEnumInfo,
+                                        CurrentEnumEntity,
+                                        enumOffset,
+                                        EnumDrawHeight,
+                                        enumElementWidth,
+                                        enumElementHeight);
+                        }
+                        break;
+                        case "System.UInt32" : {
+                            DrawEnumUInt(CurrentEnumInfo,
+                                         CurrentEnumEntity,
+                                         enumOffset,
+                                         EnumDrawHeight,
+                                         enumElementWidth,
+                                         enumElementHeight);
+                        }
+                        break;
+                        case "System.Int64" : {
+                            DrawEnumLong(CurrentEnumInfo,
+                                         CurrentEnumEntity,
+                                         enumOffset,
+                                         EnumDrawHeight,
+                                         enumElementWidth,
+                                         enumElementHeight);
+                        }
+                        break;
+                        case "System.UInt64" : {
+                            DrawEnumULong(CurrentEnumInfo,
+                                          CurrentEnumEntity,
+                                          enumOffset,
+                                          EnumDrawHeight,
+                                          enumElementWidth,
+                                          enumElementHeight);
+                        }
+                        break;
+                        case "System.Int16" : {
+                            DrawEnumShort(CurrentEnumInfo,
+                                          CurrentEnumEntity,
+                                          enumOffset,
+                                          EnumDrawHeight,
+                                          enumElementWidth,
+                                          enumElementHeight);
+                        }
+                        break;
+                        case "System.UInt16" : {
+                            DrawEnumUShort(CurrentEnumInfo,
+                                           CurrentEnumEntity,
+                                           enumOffset,
+                                           EnumDrawHeight,
+                                           enumElementWidth,
+                                           enumElementHeight);
+                        }
+                        break;
+                        case "System.Byte" : {
+                            DrawEnumByte(CurrentEnumInfo,
+                                         CurrentEnumEntity,
+                                         enumOffset,
+                                         EnumDrawHeight,
+                                         enumElementWidth,
+                                         enumElementHeight);
+                        }
+                        break;
+                        case "System.SByte" : {
+                            DrawEnumSByte(CurrentEnumInfo,
+                                          CurrentEnumEntity,
+                                          enumOffset,
+                                          EnumDrawHeight,
+                                          enumElementWidth,
+                                          enumElementHeight);
+                        }
+                        break;
+                        default :
+                        {
+                            Debug.LogError($"Cannot display {intType}");
+                        }
+                        break;
+                    }
+                    
                     EnumDrawnThisFrame = true;
                 }
 
@@ -651,12 +730,12 @@ public class EntitiesDebugger : MonoBehaviour {
 
     }
 
-    private void DrawEnum(MemberInfo member,
-                          Entity entity,
-                          float x,
-                          float y,
-                          float elementWidth,
-                          float elementHeight) {
+    private void DrawEnumInt(MemberInfo member,
+                             Entity entity,
+                             float x,
+                             float y,
+                             float elementWidth,
+                             float elementHeight) {
         var (memberObject, memberType) = GetMemberObject(member, entity);
         var currentEnumHeight = y;
         var values = Enum.GetValues(memberType);
@@ -670,8 +749,289 @@ public class EntitiesDebugger : MonoBehaviour {
                 background = Texture2D.grayTexture
             }
         });
+
         foreach(var value in values) {
             var intValue = (int)value;
+            
+            if(GUI.Button(new Rect(x,
+                                   currentEnumHeight,
+                                   elementWidth,
+                                   elementHeight), value.ToString())) {
+                if(intValue == 0) {
+                    currentValue = 0;
+                } else if(memberType.GetCustomAttributes<FlagsAttribute>().Any()) {
+                    currentValue ^= intValue;
+                } else {
+                    currentValue = intValue;
+                }
+                SetMemberValue(member, entity, currentValue);
+            }
+            currentEnumHeight += elementHeight;
+        }
+    }
+
+    private void DrawEnumUInt(MemberInfo member,
+                              Entity entity,
+                              float x,
+                              float y,
+                              float elementWidth,
+                              float elementHeight) {
+        var (memberObject, memberType) = GetMemberObject(member, entity);
+        var currentEnumHeight = y;
+        var values = Enum.GetValues(memberType);
+        var currentValue = (uint)memberObject;
+        
+        GUI.Box(new Rect(x,
+                         y,
+                         elementWidth,
+                         elementHeight * values.Length), GUIContent.none, new GUIStyle() {
+            normal = new GUIStyleState() {
+                background = Texture2D.grayTexture
+            }
+        });
+
+        foreach(var value in values) {
+            var intValue = (uint)value;
+            
+            if(GUI.Button(new Rect(x,
+                                   currentEnumHeight,
+                                   elementWidth,
+                                   elementHeight), value.ToString())) {
+                if(intValue == 0) {
+                    currentValue = 0;
+                } else if(memberType.GetCustomAttributes<FlagsAttribute>().Any()) {
+                    currentValue ^= intValue;
+                } else {
+                    currentValue = intValue;
+                }
+                SetMemberValue(member, entity, currentValue);
+            }
+            currentEnumHeight += elementHeight;
+        }
+    }
+
+    private void DrawEnumLong(MemberInfo member,
+                              Entity entity,
+                              float x,
+                              float y,
+                              float elementWidth,
+                              float elementHeight) {
+        var (memberObject, memberType) = GetMemberObject(member, entity);
+        var currentEnumHeight = y;
+        var values = Enum.GetValues(memberType);
+        var currentValue = (long)memberObject;
+        
+        GUI.Box(new Rect(x,
+                         y,
+                         elementWidth,
+                         elementHeight * values.Length), GUIContent.none, new GUIStyle() {
+            normal = new GUIStyleState() {
+                background = Texture2D.grayTexture
+            }
+        });
+
+        foreach(var value in values) {
+            var intValue = (long)value;
+            
+            if(GUI.Button(new Rect(x,
+                                   currentEnumHeight,
+                                   elementWidth,
+                                   elementHeight), value.ToString())) {
+                if(intValue == 0) {
+                    currentValue = 0;
+                } else if(memberType.GetCustomAttributes<FlagsAttribute>().Any()) {
+                    currentValue ^= intValue;
+                } else {
+                    currentValue = intValue;
+                }
+                SetMemberValue(member, entity, currentValue);
+            }
+            currentEnumHeight += elementHeight;
+        }
+    }
+
+    private void DrawEnumULong(MemberInfo member,
+                               Entity entity,
+                               float x,
+                               float y,
+                               float elementWidth,
+                               float elementHeight) {
+        var (memberObject, memberType) = GetMemberObject(member, entity);
+        var currentEnumHeight = y;
+        var values = Enum.GetValues(memberType);
+        var currentValue = (ulong)memberObject;
+        
+        GUI.Box(new Rect(x,
+                         y,
+                         elementWidth,
+                         elementHeight * values.Length), GUIContent.none, new GUIStyle() {
+            normal = new GUIStyleState() {
+                background = Texture2D.grayTexture
+            }
+        });
+
+        foreach(var value in values) {
+            var intValue = (ulong)value;
+            
+            if(GUI.Button(new Rect(x,
+                                   currentEnumHeight,
+                                   elementWidth,
+                                   elementHeight), value.ToString())) {
+                if(intValue == 0) {
+                    currentValue = 0;
+                } else if(memberType.GetCustomAttributes<FlagsAttribute>().Any()) {
+                    currentValue ^= intValue;
+                } else {
+                    currentValue = intValue;
+                }
+                SetMemberValue(member, entity, currentValue);
+            }
+            currentEnumHeight += elementHeight;
+        }
+    }
+
+    private void DrawEnumShort(MemberInfo member,
+                               Entity entity,
+                               float x,
+                               float y,
+                               float elementWidth,
+                               float elementHeight) {
+        var (memberObject, memberType) = GetMemberObject(member, entity);
+        var currentEnumHeight = y;
+        var values = Enum.GetValues(memberType);
+        var currentValue = (short)memberObject;
+        
+        GUI.Box(new Rect(x,
+                         y,
+                         elementWidth,
+                         elementHeight * values.Length), GUIContent.none, new GUIStyle() {
+            normal = new GUIStyleState() {
+                background = Texture2D.grayTexture
+            }
+        });
+
+        foreach(var value in values) {
+            var intValue = (short)value;
+            
+            if(GUI.Button(new Rect(x,
+                                   currentEnumHeight,
+                                   elementWidth,
+                                   elementHeight), value.ToString())) {
+                if(intValue == 0) {
+                    currentValue = 0;
+                } else if(memberType.GetCustomAttributes<FlagsAttribute>().Any()) {
+                    currentValue ^= intValue;
+                } else {
+                    currentValue = intValue;
+                }
+                SetMemberValue(member, entity, currentValue);
+            }
+            currentEnumHeight += elementHeight;
+        }
+    }
+
+    private void DrawEnumUShort(MemberInfo member,
+                                Entity entity,
+                                float x,
+                                float y,
+                                float elementWidth,
+                                float elementHeight) {
+        var (memberObject, memberType) = GetMemberObject(member, entity);
+        var currentEnumHeight = y;
+        var values = Enum.GetValues(memberType);
+        var currentValue = (ushort)memberObject;
+        
+        GUI.Box(new Rect(x,
+                         y,
+                         elementWidth,
+                         elementHeight * values.Length), GUIContent.none, new GUIStyle() {
+            normal = new GUIStyleState() {
+                background = Texture2D.grayTexture
+            }
+        });
+
+        foreach(var value in values) {
+            var intValue = (ushort)value;
+            
+            if(GUI.Button(new Rect(x,
+                                   currentEnumHeight,
+                                   elementWidth,
+                                   elementHeight), value.ToString())) {
+                if(intValue == 0) {
+                    currentValue = 0;
+                } else if(memberType.GetCustomAttributes<FlagsAttribute>().Any()) {
+                    currentValue ^= intValue;
+                } else {
+                    currentValue = intValue;
+                }
+                SetMemberValue(member, entity, currentValue);
+            }
+            currentEnumHeight += elementHeight;
+        }
+    }
+
+    private void DrawEnumByte(MemberInfo member,
+                              Entity entity,
+                              float x,
+                              float y,
+                              float elementWidth,
+                              float elementHeight) {
+        var (memberObject, memberType) = GetMemberObject(member, entity);
+        var currentEnumHeight = y;
+        var values = Enum.GetValues(memberType);
+        var currentValue = (byte)memberObject;
+        
+        GUI.Box(new Rect(x,
+                         y,
+                         elementWidth,
+                         elementHeight * values.Length), GUIContent.none, new GUIStyle() {
+            normal = new GUIStyleState() {
+                background = Texture2D.grayTexture
+            }
+        });
+
+        foreach(var value in values) {
+            var intValue = (byte)value;
+            
+            if(GUI.Button(new Rect(x,
+                                   currentEnumHeight,
+                                   elementWidth,
+                                   elementHeight), value.ToString())) {
+                if(intValue == 0) {
+                    currentValue = 0;
+                } else if(memberType.GetCustomAttributes<FlagsAttribute>().Any()) {
+                    currentValue ^= intValue;
+                } else {
+                    currentValue = intValue;
+                }
+                SetMemberValue(member, entity, currentValue);
+            }
+            currentEnumHeight += elementHeight;
+        }
+    }
+
+    private void DrawEnumSByte(MemberInfo member,
+                               Entity entity,
+                               float x,
+                               float y,
+                               float elementWidth,
+                               float elementHeight) {
+        var (memberObject, memberType) = GetMemberObject(member, entity);
+        var currentEnumHeight = y;
+        var values = Enum.GetValues(memberType);
+        var currentValue = (sbyte)memberObject;
+        
+        GUI.Box(new Rect(x,
+                         y,
+                         elementWidth,
+                         elementHeight * values.Length), GUIContent.none, new GUIStyle() {
+            normal = new GUIStyleState() {
+                background = Texture2D.grayTexture
+            }
+        });
+
+        foreach(var value in values) {
+            var intValue = (sbyte)value;
             
             if(GUI.Button(new Rect(x,
                                    currentEnumHeight,
