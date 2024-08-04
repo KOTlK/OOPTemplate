@@ -13,12 +13,12 @@ public enum EntityFlags
 
 public enum EntityType
 {
-    Utility,
     // types goes here
 }
 
-public class Entity : MonoBehaviour {
+public class Entity : MonoBehaviour, ISave  {
     public uint          Id;
+    public ResourceLink  PrefabName;
     public EntityFlags   Flags;
     public EntityType    Type;
     public EntityManager Em;
@@ -33,11 +33,18 @@ public class Entity : MonoBehaviour {
         }
     }
     
+    public virtual void OnBaking(){ }
     public virtual void OnCreate(){ }
     public virtual void Execute(){ }
     
     public virtual void Destroy() {
         Destroy(gameObject);
+    }
+
+    public virtual void Save(SaveFile sf) {
+    }
+
+    public virtual void Load(SaveFile sf) {
     }
 
     public void Move(Vector3 move) {

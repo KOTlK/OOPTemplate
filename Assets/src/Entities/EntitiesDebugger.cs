@@ -207,7 +207,7 @@ public class EntitiesDebugger : MonoBehaviour {
                 GUI.BeginGroup(descriptionRect);
                  // Entity Description
 
-                GUI.Box(new Rect(0, 0, descriptionWidth, screenHeight), $"{EntityManager.Entities[SelectedEntity].Type}:{SelectedEntity}");
+                GUI.Box(new Rect(0, 0, descriptionWidth, screenHeight), $"{EntityManager.Entities[SelectedEntity].Type}:{SelectedEntity}:{EntityManager.Entities[SelectedEntity].Tag}");
 
                 var entity = EntityManager.Entities[SelectedEntity].Entity;
                 var type = entity.GetType();

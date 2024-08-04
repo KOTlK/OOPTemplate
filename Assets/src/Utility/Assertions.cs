@@ -8,4 +8,11 @@ public static class Assertions {
             Debug.LogError("Assertion Failed");
         }
     }
+
+    [Conditional("UNITY_ASSERTIONS")]
+    public static void Assert(bool expr, string errorMessage) {
+        if(!expr) {
+            Debug.LogError(errorMessage);
+        }
+    }
 }
