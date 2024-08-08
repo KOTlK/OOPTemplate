@@ -19,12 +19,20 @@ public unsafe class EventData{
         Capacity   = initialCapacity;
         Allocator  = allocator;
         BindedType = typeof(T);
+#if UNITY_EDITOR
         Data       = MallocTracked(sizeof(T) * initialCapacity, AlignOf<T>(), allocator, 0);
+#else
+        Data       = Malloc(sizeof(T) * initialCapacity, AlignOf<T>(), allocator);
+#endif
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Free(){
+#if UNITY_EDITOR
         FreeTracked(Data, Allocator);
+#else
+        Free(Data, Allocator);
+#endif
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -50,7 +58,11 @@ public unsafe class EventData{
         IsTrue(typeof(T) == BindedType);
         if(Count >= Capacity){
             Capacity = Capacity << 1;
+#if UNITY_EDITOR
             var newData = MallocTracked(sizeof(T) * Capacity, AlignOf<T>(), Allocator, 0);
+#else
+            var newData = Malloc(sizeof(T) * Capacity, AlignOf<T>(), Allocator);
+#endif
             MemMove(newData, Data, sizeof(T) * Count);
             FreeTracked(Data, Allocator);
             Data = newData;

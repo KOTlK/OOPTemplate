@@ -13,11 +13,11 @@ public struct ResourceLink : ISave {
     public string     Path; // Actual path to the resource
     public GameObject Reference; // Used as reference to resource in Resources folder, do not use it.
 
-    public void Save(SaveFile sf) {
+    public void Save(ISaveFile sf) {
         sf.Write(nameof(Path), Path);
     }
 
-    public void Load(SaveFile sf) {
+    public void Load(ISaveFile sf) {
         Path = sf.Read<string>(nameof(Path));
     }
 }

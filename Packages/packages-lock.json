@@ -1,5 +1,12 @@
 {
   "dependencies": {
+    "com.kotlk.unityarena": {
+      "version": "https://github.com/KOTlK/UnityArena.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "695ac6fc4d8e0a77a419004c68bf6a316704da4a"
+    },
     "com.unity.burst": {
       "version": "1.8.4",
       "depth": 1,

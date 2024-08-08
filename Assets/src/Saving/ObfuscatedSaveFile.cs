@@ -1,47 +1,12 @@
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using UnityEngine;
 using Unity.Collections;
 using System;
 
 using static Assertions;
 
-public interface ISaveFile {
-    void NewFile(float version);
-    void SaveToFile(string path, string name);
-    void NewFromExistingFile(string path);
-    void Write<T>(string name, T value);
-    void WriteObject(string name, ISave save);
-    void WriteArray<T>(string name, int itemsCount, T[] arr);
-    void WriteObjectArray<T>(string name, int itemsCount, T[] arr) 
-        where T : ISave;
-    void WriteNativeArray<T>(string name, int itemsCount, NativeArray<T> arr) 
-        where T : unmanaged;
-    void WritePackedEntity(string name, PackedEntity e, uint id);
-    void WriteEnum(string name, Enum e);
-    T Read<T>(string name, T defaultValue = default(T));
-    T[] ReadArray<T>(string name);
-    void ReadObject(string name, ISave obj);
-
-    T ReadValueType<T>(string name) 
-        where T : ISave;
-    T ReadEnum<T>(string name)
-        where T : Enum;
-    PackedEntity ReadPackedEntity(string name, EntityManager em);
-    T[] ReadObjectArray<T>(string name, Func<T> createObjectFunc) 
-        where T : ISave;
-    T[] ReadUnmanagedObjectArray<T>(string name) 
-        where T : unmanaged, ISave;
-    T[] ReadValueObjectArray<T>(string name)
-        where T : struct, ISave;
-    NativeArray<T> ReadNativeObjectArray<T>(string name, Allocator allocator)
-        where T : unmanaged, ISave;
-    NativeArray<T> ReadNativeArray<T>(string name, Allocator allocator) 
-        where T : unmanaged;
-}
-
-public class SaveFile : ISaveFile {
+public unsafe class ObfuscatedSaveFile : ISaveFile, IDisposable {
     public struct Field {
         public string Name;
         public string Value;
@@ -72,23 +37,122 @@ public class SaveFile : ISaveFile {
         }
     }
 
-    public float         Version;
-    public string[]      LoadedLines;
-    public int           LinesCount;
-    public StringBuilder Sb = new();
-    public int           CurrentOffset;
-    public ObjectNode    Root;
+    public enum NodeItem {
+        None,
+        Field,
+        Object,
+        ObjectStart
+    }
+
+    public Arena Arena = new(50000);
+
+    public float      Version;
+    public char      *CharBuffer;
+    public uint       BufferLength;
+    public uint       BufferCount;
+
+    public string     LoadedChars;
+    public int        LoadedLength;
+    public ObjectNode Root;
     public Stack<ObjectNode> ObjectStack = new();
 
-    public const int Offset = 4;
+    public char   *CurrentBuffer;
+    public uint    CurrentBufferLength;
+    public uint    CurrentBufferCount;
+
+    public NodeItem  PreviouslyAdded;
     public const string Extension = ".sav";
-    public const string Separator = " : ";
+    public const char NameValueSeparator = ':';
+    public const char FieldSeparator = ';';
+
+    public void Dispose() {
+        CharBuffer = null;
+        CurrentBuffer = null;
+        Arena.Dispose();
+    }
+
+    private void Resize(char **array, uint oldlen, uint newlength) {
+        var arr = *array;
+        var newarr = Arena.Alloc<char>(newlength);
+
+        for(var i = 0; i < oldlen; ++i) {
+            newarr[i] = arr[i];
+        }
+
+        *array = newarr;
+    }
+
+    private void PushChar(char c) {
+        CharBuffer[BufferCount++] = c;
+
+        if(BufferLength == BufferCount) {
+            fixed (char **buffer = &CharBuffer) {
+                var newlen = BufferLength << 1;
+                Resize(buffer, BufferLength, newlen);
+                BufferLength = newlen;
+            }
+        }
+    }
+
+    private void PushChars(char[] c) {
+        uint len = BufferCount + (uint)c.Length;
+        if(len >= BufferLength) {
+            var newlen = len << 1;
+            fixed (char **buffer = &CharBuffer) {
+                Resize(buffer, BufferLength, newlen);
+                BufferLength = newlen;
+            }
+        }
+
+        for(var i = 0; i < c.Length; ++i) {
+            CharBuffer[BufferCount + i] = c[i];
+        }
+
+        BufferCount += (uint)c.Length;
+    }
+
+    private void PushString(string s) {
+        var len = BufferCount + s.Length;
+        if(len >= BufferLength) {
+            uint newlen = (uint)len << 1;
+            fixed (char **buffer = &CharBuffer) {
+                Resize(buffer, BufferLength, newlen);
+                BufferLength = newlen;
+            }
+        }
+
+        for(var i = 0; i < s.Length; ++i) {
+            CharBuffer[BufferCount + i] = s[i];
+        }
+
+        BufferCount += (uint)s.Length;
+    }
+
+    private void PushCurrent(char c) {
+        CurrentBuffer[CurrentBufferCount++] = c;
+
+        if(CurrentBufferLength == CurrentBufferCount) {
+            var newlen = CurrentBufferLength << 1;
+            fixed (char **buffer = &CurrentBuffer) {
+                Resize(buffer, CurrentBufferLength, newlen);
+                CurrentBufferLength = newlen;
+            }
+        }
+    }
+
+    public const uint InitialBufferLength = 5000;
+    public const uint InitialCurrentBufferLength = 500;
     
     public void NewFile(float version) {
         Version = version;
-        Sb.Clear();
+        Arena.FreeAll();
+        CharBuffer = Arena.Alloc<char>(InitialBufferLength);
+        BufferLength = InitialBufferLength;
+        CurrentBuffer = Arena.Alloc<char>(InitialCurrentBufferLength);
+        CurrentBufferLength = InitialCurrentBufferLength;
+        CurrentBufferCount = 0;
+        BufferCount = 0;
         Write(nameof(Version), version);
-        Sb.AppendLine();
     }
     
     public void SaveToFile(string path, string name) {
@@ -98,60 +162,43 @@ public class SaveFile : ISaveFile {
             File.CreateText(path).Close();
         }
         
-        File.WriteAllText(path, Sb.ToString());
-        // File.WriteAllText(path, Sb.ToString());
+        File.WriteAllText(path, new string(CharBuffer, 0, (int)BufferCount));
     }
 
     public void NewFromExistingFile(string path) {
         Assert(path.EndsWith(Extension), $"File should ends with {Extension}");
-        Root = new ObjectNode
-        {
-            Fields = new(),
-            NestedObjects = new()
-        };
+
+        Arena.FreeAll();
+        CharBuffer = Arena.Alloc<char>(InitialBufferLength);
+        BufferLength = InitialBufferLength;
+        CurrentBuffer = Arena.Alloc<char>(InitialCurrentBufferLength);
+        CurrentBufferLength = InitialCurrentBufferLength;
+        CurrentBufferCount = 0;
+        BufferCount = 0;
 
         if(File.Exists(path)) {
-            LoadedLines = File.ReadAllLines(path);
-            LinesCount = LoadedLines.Length;
+            LoadedChars = File.ReadAllText(path);
+            LoadedLength = LoadedChars.Length;
+            CurrentBufferCount = 0;
+        } else {
+            Debug.LogError($"File at: {path} does not exist");
         }
 
         //Parse file
-        var versionLine = LoadedLines[0].TrimStart().TrimEnd();
-        var nameObj = versionLine.Split(Separator);
-        if(nameObj.Length == 2) {
-            Assert(nameObj[0] == nameof(Version), "Can't read version, make sure the file is formated right");
-            if(float.TryParse(nameObj[1], out var version)) {
-                Version = version;
-            } else {
-                Debug.LogError("Can't parse version");
-            }
-        } else {
-            Debug.LogError("Can't parse version");
-        }
+        var startIndex = 0;
 
-        var startLine = 1;
-
-        while(startLine < LinesCount) {
-            var line = LoadedLines[startLine].TrimStart().TrimEnd();
-            var separateLine = line.Split(Separator);
-            if(separateLine.Length > 1 && separateLine[1] == "{") {
-                startLine++;
-                SaveObject(separateLine[0], ParseObject(ref startLine, ObjectNode.Create()));
-            } else if(separateLine.Length == 2) {
-                Root.Fields.Add(new Field(separateLine[0], separateLine[1]));
-                startLine++;
-            } else {
-                startLine++;
-            }
-        }
+        Root = ParseObject(ref startIndex, ObjectNode.Create());
     }
 
 
     public void Write<T>(string name, T value) {
-        Sb.Append(name);
+        if(PreviouslyAdded == NodeItem.Field) {
+            PushChar(FieldSeparator);
+        }
+        PushString(name);
         AddNameSeparator();
-        Sb.Append(Parse(value));
-        NextLine();
+        PushString(Parse(value));
+        PreviouslyAdded = NodeItem.Field;
     }
 
     public void WriteObject(string name, ISave save) {
@@ -166,7 +213,6 @@ public class SaveFile : ISaveFile {
 
         for(var i = 0; i < itemsCount; ++i) {
             Write($"{name}ArrayElement{i}", arr[i]);
-            NextLine();
         }
         EndObject();
     }
@@ -178,7 +224,6 @@ public class SaveFile : ISaveFile {
 
         for(var i = 0; i < itemsCount; ++i) {
             WriteObject($"{name}ArrayElement{i}", arr[i]);
-            NextLine();
         }
         EndObject();
     }
@@ -190,7 +235,6 @@ public class SaveFile : ISaveFile {
 
         for(var i = 0; i < itemsCount; ++i) {
             Write($"{name}ArrayElement{i}", arr[i]);
-            NextLine();
         }
         EndObject();
     }
@@ -496,53 +540,67 @@ public class SaveFile : ISaveFile {
     }
 
     private void BeginObject(string name) {
-        Sb.Append(name);
+        if(PreviouslyAdded == NodeItem.Field) {
+            PushChar(FieldSeparator);
+        }
+        PushString(name);
         AddNameSeparator();
-        Sb.Append('{');
-        CurrentOffset += Offset;
-        NextLine();
-    }
-
-    private void NextLine() {
-        Sb.AppendLine();
-        Sb.Append(' ', CurrentOffset);
+        PushChar('{');
+        PreviouslyAdded = NodeItem.ObjectStart;
     }
 
     private void EndObject() {
-        Sb.AppendLine();
-        CurrentOffset -= Offset;
-        Sb.Append(' ', CurrentOffset);
-        Sb.Append('}');
-        NextLine();
+        PushChar('}');
+        PreviouslyAdded = NodeItem.Object;
     }
 
     private void AddNameSeparator() {
-        Sb.Append(Separator);
+        PushChar(NameValueSeparator);
     }
 
-    private ObjectNode ParseObject(ref int startLine, ObjectNode node = default) {
-        while(true) {
-            var line = LoadedLines[startLine].TrimStart().TrimEnd();
+    private ObjectNode ParseObject(ref int index, ObjectNode node = default) {
+        while(index < LoadedLength) {
+            var c = LoadedChars[index];
+            if(LoadedChars[index] == '}') {
+                index++;
 
-            if(string.IsNullOrEmpty(line)) {
-                startLine++;
-                continue;
-            }
-
-            if(line[0] == '}') {
-                startLine++;
+                if(CurrentBufferCount > 0 && CurrentBuffer[CurrentBufferCount - 1] != '}') {
+                    for(var i = 0; i < CurrentBufferCount; ++i) {
+                        if(CurrentBuffer[i] == NameValueSeparator) {
+                            var name = new string(CurrentBuffer, 0, i);
+                            var value = new string(CurrentBuffer, i + 1, (int)CurrentBufferCount - i 
+                                - 1);
+                            node.PushField(new Field(name, value));
+                            CurrentBufferCount = 0;
+                            break;
+                        }
+                    }
+                }
                 break;
             }
 
-            var separateLine = line.Split(Separator);
-
-            if(separateLine[1] == "{") {
-                startLine++;
-                node.PushObject(separateLine[0], ParseObject(ref startLine, ObjectNode.Create()));
+            if(LoadedChars[index] == '{') {
+                index++;
+                var name = new string(CurrentBuffer, 0, (int)CurrentBufferCount - 1);
+                CurrentBufferCount = 0;
+                node.PushObject(name, ParseObject(ref index, ObjectNode.Create()));
+            } else if(LoadedChars[index] == FieldSeparator) {
+                index++;
+                
+                for(var i = 0; i < CurrentBufferCount; ++i) {
+                    if(CurrentBuffer[i] == NameValueSeparator) {
+                        var name = new string(CurrentBuffer, 0, i);
+                        var value = new string(CurrentBuffer, i + 1, (int)CurrentBufferCount - i 
+                            - 1);
+                        node.PushField(new Field(name, value));
+                        CurrentBufferCount = 0;
+                        break;
+                    }
+                }
             } else {
-                node.PushField(new Field(separateLine[0], separateLine[1]));
-                startLine++;
+                PushCurrent(LoadedChars[index++]);
             }
+
         }
 
         return node;

@@ -1,4 +1,4 @@
 public interface ISave {
-    void Save(SaveFile sf);
-    void Load(SaveFile sf);
+    void Save(ISaveFile sf);
+    void Load(ISaveFile sf);
 }

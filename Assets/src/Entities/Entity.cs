@@ -41,10 +41,10 @@ public class Entity : MonoBehaviour, ISave  {
         Destroy(gameObject);
     }
 
-    public virtual void Save(SaveFile sf) {
+    public virtual void Save(ISaveFile sf) {
     }
 
-    public virtual void Load(SaveFile sf) {
+    public virtual void Load(ISaveFile sf) {
     }
 
     public void Move(Vector3 move) {

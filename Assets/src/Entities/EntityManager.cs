@@ -21,12 +21,12 @@ public struct EntityHandle : ISave {
     public uint Id;
     public uint Tag;
 
-    public void Save(SaveFile sf) {
+    public void Save(ISaveFile sf) {
         sf.Write(nameof(Id), Id);
         sf.Write(nameof(Tag), Tag);
     }
 
-    public void Load(SaveFile sf) {
+    public void Load(ISaveFile sf) {
         Id  = sf.Read<uint>(nameof(Id));
         Tag = sf.Read<uint>(nameof(Tag));
     }
@@ -56,7 +56,7 @@ public class EntityManager : MonoBehaviour, ISave {
         }
     }
 
-    public virtual void Save(SaveFile sf) { // @Incomplete Save and Load World?
+    public virtual void Save(ISaveFile sf) { // @Incomplete Save and Load World?
         sf.Write(nameof(MaxEntitiesCount), MaxEntitiesCount);
         sf.Write(nameof(CurrentTag), CurrentTag);
         for(uint i = 1; i < MaxEntitiesCount; ++i) {
@@ -64,7 +64,7 @@ public class EntityManager : MonoBehaviour, ISave {
         }
     }
 
-    public virtual void Load(SaveFile sf) {
+    public virtual void Load(ISaveFile sf) {
         // Clear everything
         for(uint i = 0; i < MaxEntitiesCount; ++i) {
             DestroyEntityImmediate(i);

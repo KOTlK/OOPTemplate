@@ -21,6 +21,10 @@ public class Main : MonoBehaviour {
         Singleton<TaskRunner>.Create(TaskRunner);
         Singleton<Events>.Create(Events);
     }
+
+    private void OnDestroy() {
+        SaveSystem.Dispose();
+    }
     
     private void Start() {
         EntityManager.BakeEntities();
