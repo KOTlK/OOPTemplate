@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using UnityEditor;
 using UnityEngine;
 using static ArrayUtils;
 
@@ -440,6 +441,32 @@ public class EntitiesDebugger : MonoBehaviour {
                      currentHeight,
                      gotoWidth,
                      additionalFieldHeight);
+        } else if (memberType == typeof(EntityHandle)) {
+            var handle = (EntityHandle)memberObject;
+
+            if(EntityManager.GetEntity(handle, out var e)) {
+                DrawGoTo(e,
+                         selectOffset,
+                         currentHeight,
+                         gotoWidth,
+                         additionalFieldHeight);
+            }
+        } else if (memberType == typeof(ResourceLink)) {
+            var link = (ResourceLink)memberObject;
+
+#if UNITY_EDITOR
+            if(GUI.Button(new Rect(enumOffset,
+                                currentHeight,
+                                width,
+                                height), link.Path)) {
+                Selection.activeObject = AssetDatabase.LoadMainAssetAtPath($"Assets/Resources/{link.Path}.prefab");
+            }
+#else
+            GUI.Label(new Rect(enumOffset,
+                               currentHeight,
+                               width,
+                               height), link.Path);
+#endif
         }
 
         switch (memberTypeName) {

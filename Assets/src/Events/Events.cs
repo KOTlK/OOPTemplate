@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Unity.Collections;
+#if !UNITY_EDITOR
+using Unity.Collections.LowLevel.Unsafe;
+#endif
 using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility;
 using static UnityEngine.Assertions.Assert;
 
@@ -27,11 +30,11 @@ public unsafe class EventData{
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Free(){
+    public void Free() {
 #if UNITY_EDITOR
         FreeTracked(Data, Allocator);
 #else
-        Free(Data, Allocator);
+        UnsafeUtility.Free(Data, Allocator);
 #endif
     }
     

@@ -21,6 +21,26 @@ public struct EntityHandle : ISave {
     public uint Id;
     public uint Tag;
 
+    public static readonly EntityHandle Zero = new EntityHandle { Id = 0, Tag = 0};
+    
+    public static bool operator==(EntityHandle lhs, EntityHandle rhs) {
+        return lhs.Id == rhs.Id && lhs.Tag == rhs.Tag;
+    }
+    
+    public static bool operator!=(EntityHandle lhs, EntityHandle rhs) {
+        return !(lhs == rhs);
+    }
+
+    public override bool Equals(object obj)
+    {
+        return (EntityHandle)obj == this;
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Id, Tag);
+    }
+
     public void Save(ISaveFile sf) {
         sf.Write(nameof(Id), Id);
         sf.Write(nameof(Tag), Tag);
@@ -43,7 +63,8 @@ public class EntityManager : MonoBehaviour, ISave {
     public uint[]            FreeEntities    = new uint[128];
     [HideInInspector] 
     public uint              MaxEntitiesCount = 1;
-    public uint              CurrentTag = 0;
+    [HideInInspector]
+    public uint              CurrentTag = 1;
     public uint              FreeEntitiesCount;
     public uint              EntitiesToRemoveCount;
 
@@ -395,7 +416,7 @@ public class EntityManager : MonoBehaviour, ISave {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsValid(EntityHandle handle) {
-        return handle.Tag == Entities[handle.Id].Tag;
+        return handle != EntityHandle.Zero && handle.Tag == Entities[handle.Id].Tag;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -420,7 +441,7 @@ public class EntityManager : MonoBehaviour, ISave {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private uint GetTag() {
         if(CurrentTag == uint.MaxValue) {
-            CurrentTag = 0;
+            CurrentTag = 1;
         }
         
         return CurrentTag++;

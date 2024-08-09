@@ -18,7 +18,7 @@ public enum EntityType
 
 public class Entity : MonoBehaviour, ISave  {
     public uint          Id;
-    public ResourceLink  PrefabName;
+    public ResourceLink  Prefab;
     public EntityFlags   Flags;
     public EntityType    Type;
     public EntityManager Em;

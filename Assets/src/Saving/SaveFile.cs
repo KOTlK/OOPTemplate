@@ -212,7 +212,7 @@ public class SaveFile : ISaveFile {
         Write(nameof(e.Id), e.Id);
         WriteEnum(nameof(e.Type), e.Type);
         WriteEnum(nameof(e.Flags), e.Flags);
-        WriteObject(nameof(e.PrefabName), e.PrefabName);
+        WriteObject(nameof(e.Prefab), e.Prefab);
         Write("Position", e.transform.position);
         Write("Orientation", e.transform.rotation);
         Write("Scale", e.transform.localScale);
@@ -373,7 +373,7 @@ public class SaveFile : ISaveFile {
         var id     = Read<uint>(nameof(entity.Id));
         var type   = ReadEnum<EntityType>(nameof(entity.Type));
         var flags  = ReadEnum<EntityFlags>(nameof(entity.Flags));
-        var link   = ReadValueType<ResourceLink>(nameof(entity.PrefabName));
+        var link   = ReadValueType<ResourceLink>(nameof(entity.Prefab));
         var position = Read<Vector3>("Position");
         var orientation = Read<Quaternion>("Orientation");
         var scale = Read<Vector3>("Scale");
