@@ -77,6 +77,11 @@ public class EntityManager : MonoBehaviour, ISave {
         }
     }
 
+    private void Start() {
+        Console.RegisterCommand<EntityManager>(nameof(DestroyEntity), this, "destroy_entity");
+        Console.RegisterCommand<EntityManager>(nameof(DestroyEntityImmediate), this, "destroy_entity_immediate");
+    }
+
     public virtual void Save(ISaveFile sf) { // @Incomplete Save and Load World?
         sf.Write(nameof(MaxEntitiesCount), MaxEntitiesCount);
         sf.Write(nameof(CurrentTag), CurrentTag);

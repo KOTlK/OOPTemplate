@@ -17,7 +17,7 @@ public class EntitiesDebugger : MonoBehaviour {
     public float         RollSensitivity    = 50f;
     public bool          Enabled = false; // (1)
     public bool          SortEntities = false;
-    public KeyCode       KeyToEnable = KeyCode.BackQuote;
+    public KeyCode       KeyToEnable = KeyCode.BackQuote; // Shift + this key to open
     //public KeyCode MouseLookKey = KeyCode.Mouse1; // Whenever I enter play mode and exit it, value of this and (1) randomly changes. So, mouse look key is hardcoded.
     public EntityType    SortByType;
     public float         EntitiesListWidth = 0.15f;
@@ -76,9 +76,12 @@ public class EntitiesDebugger : MonoBehaviour {
     }
 
     private void Update() {
-        if(Input.GetKeyDown(KeyToEnable)) {
-            Switch();
+        if(Input.GetKey(KeyCode.LeftShift)) {
+            if(Input.GetKeyDown(KeyToEnable)) {
+                Switch();
+            }
         }
+        
 
         if(Enabled) {
             if (Input.GetKey(KeyCode.Mouse1)) {
