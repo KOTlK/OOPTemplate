@@ -9,7 +9,7 @@ public enum TaskGroupType {
     ExecuteAlways
 }
 
-public class TaskRunner {
+public unsafe class TaskRunner {
     private Dictionary<TaskGroupType, TaskGroup> _groups = new();
     
     public TaskRunner() {
@@ -21,10 +21,10 @@ public class TaskRunner {
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void StartTask(TaskGroupType group, Task task) {
-        Assert(task != null);
+    public void StartTask(TaskGroupType group, UpdateFunction update) {
+        Assert(update != null);
         Assert(_groups.ContainsKey(group));
-        _groups[group].NewTask(task);
+        _groups[group].NewTask(update);
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

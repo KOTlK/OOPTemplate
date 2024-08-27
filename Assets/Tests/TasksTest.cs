@@ -1,8 +1,7 @@
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.TestTools;
 using System.Collections.Generic;
-using System.Collections;
+using static TasksUtils;
 
 public class TasksTest
 {
@@ -16,7 +15,7 @@ public class TasksTest
         for(var i = 0; i < tasksCount; ++i) {
             var exCount = Random.Range(0, maxExecutionsCount);
             var task    = new SampleTask(exCount);
-            runner.StartTask(TaskGroupType.Gameplay, task);
+            runner.StartTask(TaskGroupType.Gameplay, task.Update);
             tasksDict.Add(task, exCount);
             Assert.True(task.Started);
         }
@@ -40,8 +39,8 @@ public class TasksTest
         var task2 = new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask(new WrappedTask()))))))))))))))))))))))))))))))))))))))))));
         task1.TaskToStop = task2;
         
-        runner.StartTask(TaskGroupType.Gameplay, task2);
-        runner.StartTask(TaskGroupType.Gameplay, task1);
+        runner.StartTask(TaskGroupType.Gameplay, task2.Update);
+        runner.StartTask(TaskGroupType.Gameplay, task1.Update);
         
         runner.RunTaskGroup(TaskGroupType.Gameplay);
         
@@ -58,14 +57,10 @@ public class TasksTest
         var task3 = new TaskForSequence();
         var task4 = new TaskForSequence();
         
-        var seq = new TaskSequence(new Task[] {
-            task1,
-            task2,
-            task3,
-            task4
-        });
-        
-        var seqIndex = group.NewTask(seq);
+        var seqIndex = group.NewTask(TaskSequence(task1.Update,
+                                              task2.Update, 
+                                              task3.Update, 
+                                              task4.Update));
         
         Assert.True(task1.Executed == false);
         Assert.True(task2.Executed == false);
@@ -112,14 +107,10 @@ public class TasksTest
         var task3 = new SampleTask(2);
         var task4 = new SampleTask(4);
         
-        var seq = new ParallelTaskGroup(new Task[] {
-            task1,
-            task2,
-            task3,
-            task4
-        });
-        
-        var seqIndex = group.NewTask(seq);
+        var seqIndex = group.NewTask(ParallelTasks(task1.Update,
+                                              task2.Update,
+                                              task3.Update,
+                                              task4.Update));
         
         Assert.True(task1.Stopped == false);
         Assert.True(task2.Stopped == false);
@@ -166,17 +157,12 @@ public class TasksTest
         var task3 = new TaskForSequence();
         var task4 = new TaskForSequence();
         var task5 = new TaskForSequence();
-        
-        var seq = new TaskSequence(
-                        new ParallelTaskGroup(
-                            task1,
-                            task2,
-                            task3),
-                        new ParallelTaskGroup(
-                            task4,
-                            task5));
                             
-        var seqIndex = group.NewTask(seq);
+        var seqIndex = group.NewTask(TaskSequence(ParallelTasks(task1.Update,
+                                                                task2.Update,
+                                                                task3.Update),
+                                                  ParallelTasks(task4.Update, 
+                                                                task5.Update)));
         
         group.RunTasks();
                             
@@ -198,7 +184,7 @@ public class TasksTest
     }
 }
 
-public class SampleTask : Task {
+public class SampleTask {
     public bool Started       = false;
     public bool Stopped       = false;
     public int ExecutionCount = 0;
@@ -209,7 +195,7 @@ public class SampleTask : Task {
         Started       = true;
     }
     
-    public override bool Update() {
+    public bool Update() {
         ExecutionCount++;
         
         if(ExecutionCount >= MaxExecutions) {
@@ -221,7 +207,7 @@ public class SampleTask : Task {
     }
 }
 
-public class WrappedTask : Task {
+public class WrappedTask {
     public bool Stopped = false;
     public WrappedTask TaskToStop;
     
@@ -233,7 +219,7 @@ public class WrappedTask : Task {
         TaskToStop = null;
     }
     
-    public override bool Update() {
+    public bool Update() {
         Stopped = true;
         
         if(TaskToStop != null) {
@@ -243,15 +229,11 @@ public class WrappedTask : Task {
     }
 }
 
-public class TaskForSequence : Task {
+public class TaskForSequence {
     public bool Executed = false;
     
-    public override bool Update() {
+    public bool Update() {
         Executed = true;
         return true;
-    }
-    
-    public override void Reset() {
-        Executed = false;
     }
 }

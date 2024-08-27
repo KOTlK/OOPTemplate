@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_PixelRect:
     serializedVersion: 2
-    x: 63
+    x: 62
     y: 43
-    width: 1857
+    width: 1858
     height: 1037
   m_ShowMode: 4
-  m_Title: Scene
+  m_Title: Game
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -44,7 +44,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 0
-    width: 1857
+    width: 1858
     height: 1037
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -69,7 +69,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 0
-    width: 1857
+    width: 1858
     height: 30
   m_MinSize: {x: 0, y: 0}
   m_MaxSize: {x: 0, y: 0}
@@ -91,7 +91,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 1017
-    width: 1857
+    width: 1858
     height: 20
   m_MinSize: {x: 0, y: 0}
   m_MaxSize: {x: 0, y: 0}
@@ -114,7 +114,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 30
-    width: 1857
+    width: 1858
     height: 987
   m_MinSize: {x: 400, y: 100}
   m_MaxSize: {x: 32384, y: 16192}
@@ -139,7 +139,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 0
-    width: 1332
+    width: 1333
     height: 987
   m_MinSize: {x: 300, y: 100}
   m_MaxSize: {x: 24288, y: 16192}
@@ -165,7 +165,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 0
-    width: 1332
+    width: 1333
     height: 604
   m_MinSize: {x: 300, y: 50}
   m_MaxSize: {x: 24288, y: 8096}
@@ -241,10 +241,10 @@ MonoBehaviour:
     serializedVersion: 2
     x: 603
     y: 0
-    width: 729
+    width: 730
     height: 604
-  m_MinSize: {x: 200, y: 200}
-  m_MaxSize: {x: 4000, y: 4000}
+  m_MinSize: {x: 202, y: 221}
+  m_MaxSize: {x: 4002, y: 4021}
   m_ActualView: {fileID: 18}
   m_Panes:
   - {fileID: 18}
@@ -267,10 +267,10 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 604
-    width: 1332
+    width: 1333
     height: 383
-  m_MinSize: {x: 100, y: 100}
-  m_MaxSize: {x: 4000, y: 4000}
+  m_MinSize: {x: 101, y: 121}
+  m_MaxSize: {x: 4001, y: 4021}
   m_ActualView: {fileID: 20}
   m_Panes:
   - {fileID: 19}
@@ -292,12 +292,12 @@ MonoBehaviour:
   m_Children: []
   m_Position:
     serializedVersion: 2
-    x: 1332
+    x: 1333
     y: 0
     width: 525
     height: 987
-  m_MinSize: {x: 275, y: 50}
-  m_MaxSize: {x: 4000, y: 4000}
+  m_MinSize: {x: 276, y: 71}
+  m_MaxSize: {x: 4001, y: 4021}
   m_ActualView: {fileID: 21}
   m_Panes:
   - {fileID: 21}
@@ -449,10 +449,10 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 3175
+    x: 1395
     y: 73
-    width: 664
-    height: 926
+    width: 524
+    height: 966
   m_SerializedDataModeController:
     m_DataMode: 0
     m_PreferredDataMode: 0
@@ -464,12 +464,12 @@ MonoBehaviour:
     m_SaveData: []
     m_OverlaysVisible: 1
   m_Spl:
-    ID: 137
+    ID: 144
     splitterInitialOffset: 0
     currentActiveSplitter: -1
     realSizes:
-    - 642
-    - 214
+    - 672
+    - 224
     relativeSizes:
     - 0.75
     - 0.25
@@ -479,7 +479,7 @@ MonoBehaviour:
     maxSizes:
     - 0
     - 0
-    lastTotalSize: 856
+    lastTotalSize: 896
     splitSize: 6
     xOffset: 0
     m_Version: 1
@@ -548,7 +548,7 @@ MonoBehaviour:
       name: ProjectTemplate
       fullName: ProjectTemplate
       resultStatus: 1
-      duration: 0.1319396
+      duration: 0.1188839
       messages: 
       output: 
       stacktrace: 
@@ -564,7 +564,7 @@ MonoBehaviour:
       name: Tests.dll
       fullName: D:/Unity/Projects/ProjectTemplate/Library/ScriptAssemblies/Tests.dll
       resultStatus: 1
-      duration: 0.0809721
+      duration: 0.0793148
       messages: 
       output: 
       stacktrace: 
@@ -580,7 +580,7 @@ MonoBehaviour:
       name: EventsTests
       fullName: EventsTests
       resultStatus: 1
-      duration: 0.0448702
+      duration: 0.0447372
       messages: 
       output: 
       stacktrace: 
@@ -596,7 +596,7 @@ MonoBehaviour:
       name: CreateExecuteEventAndClear
       fullName: EventsTests.CreateExecuteEventAndClear
       resultStatus: 1
-      duration: 0.0170442
+      duration: 0.0170266
       messages: 
       output: 
       stacktrace: 
@@ -613,14 +613,14 @@ MonoBehaviour:
       name: PerformaceTest
       fullName: EventsTests.PerformaceTest
       resultStatus: 1
-      duration: 0.0093851
+      duration: 0.0084907
       messages: 
-      output: 'Initialization: 134 ticks
+      output: 'Initialization: 112 ticks
 
         Raising 10000 identical Events:
-        28296 ticks
+        31427 ticks
 
-        Handling 10000 identical Events: 1955 ticks
+        Handling 10000 identical Events: 1877 ticks
 
         10000,
         100000
@@ -640,7 +640,7 @@ MonoBehaviour:
       name: ResizeAndSaveData
       fullName: EventsTests.ResizeAndSaveData
       resultStatus: 1
-      duration: 0.0005658
+      duration: 0.0005452
       messages: 
       output: 
       stacktrace: 
@@ -657,7 +657,7 @@ MonoBehaviour:
       name: TasksTest
       fullName: TasksTest
       resultStatus: 1
-      duration: 0.0332211
+      duration: 0.0321919
       messages: 
       output: 
       stacktrace: 
@@ -673,7 +673,7 @@ MonoBehaviour:
       name: ParallelTasksWillExecute
       fullName: TasksTest.ParallelTasksWillExecute
       resultStatus: 1
-      duration: 0.002052
+      duration: 0.0016643
       messages: 
       output: 
       stacktrace: 
@@ -690,7 +690,7 @@ MonoBehaviour:
       name: SequenceOfParallelTasksWillExecute
       fullName: TasksTest.SequenceOfParallelTasksWillExecute
       resultStatus: 1
-      duration: 0.0006437
+      duration: 0.0008339
       messages: 
       output: 
       stacktrace: 
@@ -707,7 +707,7 @@ MonoBehaviour:
       name: StartAndOverTasksInCorrectOrder
       fullName: TasksTest.StartAndOverTasksInCorrectOrder
       resultStatus: 1
-      duration: 0.0064217
+      duration: 0.0063005
       messages: 
       output: 
       stacktrace: 
@@ -724,7 +724,7 @@ MonoBehaviour:
       name: TaskSequenceWillExecute
       fullName: TasksTest.TaskSequenceWillExecute
       resultStatus: 1
-      duration: 0.000484
+      duration: 0.0005332
       messages: 
       output: 
       stacktrace: 
@@ -741,7 +741,7 @@ MonoBehaviour:
       name: WrappedTasksWillBeStopped
       fullName: TasksTest.WrappedTasksWillBeStopped
       resultStatus: 1
-      duration: 0.0005626
+      duration: 0.0006362
       messages: 
       output: 
       stacktrace: 
@@ -806,7 +806,7 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 63
+    x: 62
     y: 73
     width: 192
     height: 583
@@ -823,9 +823,9 @@ MonoBehaviour:
   m_SceneHierarchy:
     m_TreeViewState:
       scrollPos: {x: 0, y: 0}
-      m_SelectedIDs: 1e590000
-      m_LastClickedID: 22814
-      m_ExpandedIDs: 04fbffff
+      m_SelectedIDs: 
+      m_LastClickedID: 0
+      m_ExpandedIDs: 20f8fffff6faffff
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -870,7 +870,7 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 256
+    x: 255
     y: 73
     width: 408
     height: 583
@@ -1334,7 +1334,7 @@ MonoBehaviour:
   m_Rotation:
     m_Target: {x: 0.5078752, y: -0.015506802, z: 0.009146943, w: 0.86124647}
     speed: 2
-    m_Value: {x: 0.50787354, y: -0.01550675, z: 0.009146912, w: 0.8612436}
+    m_Value: {x: -0.5078752, y: 0.015506801, z: -0.009146942, w: -0.8612464}
   m_Size:
     m_Target: 10
     speed: 2
@@ -1384,9 +1384,9 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 666
+    x: 665
     y: 73
-    width: 727
+    width: 728
     height: 583
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -1404,7 +1404,7 @@ MonoBehaviour:
   m_ShowGizmos: 0
   m_TargetDisplay: 0
   m_ClearColor: {r: 0, g: 0, b: 0, a: 0}
-  m_TargetSize: {x: 727, y: 409}
+  m_TargetSize: {x: 728, y: 410}
   m_TextureFilterMode: 0
   m_TextureHideFlags: 61
   m_RenderIMGUI: 1
@@ -1419,10 +1419,10 @@ MonoBehaviour:
     m_VRangeLocked: 0
     hZoomLockedByDefault: 0
     vZoomLockedByDefault: 0
-    m_HBaseRangeMin: -363.5
-    m_HBaseRangeMax: 363.5
-    m_VBaseRangeMin: -204.5
-    m_VBaseRangeMax: 204.5
+    m_HBaseRangeMin: -364
+    m_HBaseRangeMax: 364
+    m_VBaseRangeMin: -205
+    m_VBaseRangeMax: 205
     m_HAllowExceedBaseRangeMin: 1
     m_HAllowExceedBaseRangeMax: 1
     m_VAllowExceedBaseRangeMin: 1
@@ -1440,23 +1440,23 @@ MonoBehaviour:
       serializedVersion: 2
       x: 0
       y: 21
-      width: 727
+      width: 728
       height: 562
     m_Scale: {x: 1, y: 1}
-    m_Translation: {x: 363.5, y: 281}
+    m_Translation: {x: 364, y: 281}
     m_MarginLeft: 0
     m_MarginRight: 0
     m_MarginTop: 0
     m_MarginBottom: 0
     m_LastShownAreaInsideMargins:
       serializedVersion: 2
-      x: -363.5
+      x: -364
       y: -281
-      width: 727
+      width: 728
       height: 562
     m_MinimalGUI: 1
   m_defaultScale: 1
-  m_LastWindowPixelSize: {x: 727, y: 583}
+  m_LastWindowPixelSize: {x: 728, y: 583}
   m_ClearInEditMode: 1
   m_NoCameraWarning: 1
   m_LowResolutionForAspectRatios: 01000000000000000000
@@ -1525,7 +1525,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 505b0000
     m_LastClickedID: 23376
-    m_ExpandedIDs: 0000000086590000
+    m_ExpandedIDs: 0000000088590000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1553,7 +1553,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: 0000000086590000
+    m_ExpandedIDs: 0000000088590000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1630,9 +1630,9 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 63
+    x: 62
     y: 677
-    width: 1331
+    width: 1332
     height: 362
   m_SerializedDataModeController:
     m_DataMode: 0

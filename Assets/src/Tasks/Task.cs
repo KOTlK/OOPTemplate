@@ -1,32 +1,38 @@
-using System.Collections;
-using System.Collections.Generic;
 using static Assertions;
 
-public struct TaskPtr {
-    public Task Task;
+public delegate bool UpdateFunction();
+
+public struct Task {
+    public UpdateFunction Update;
     public bool IsOver;
 }
 
-public abstract class Task {
-    public abstract bool Update(); // Returns true if task is over
-    public virtual void  Reset() {
+public static class TasksUtils {
+    public static UpdateFunction TaskSequence(params UpdateFunction[] funcs) {
+        var seq = new TaskSequence(funcs);
+        return seq.Update;
+    }
+
+    public static UpdateFunction ParallelTasks(params UpdateFunction[] funcs) {
+        var parr = new ParallelTaskGroup(funcs);
+        return parr.Update;
     }
 }
 
-public class TaskSequence : Task {
-    public Task[] Tasks;
+public struct TaskSequence {
+    public UpdateFunction[] Tasks;
     
     private int _cursor;
     
-    public TaskSequence(params Task[] tasks) {
+    public TaskSequence(params UpdateFunction[] tasks) {
         Assert(tasks != null);
         Assert(tasks.Length > 0);
         Tasks   = tasks;
         _cursor = 0;
     }
     
-    public override bool Update() {
-        if(Tasks[_cursor].Update()) {
+    public bool Update() {
+        if(Tasks[_cursor].Invoke()) {
             _cursor++;
             
             if(_cursor == Tasks.Length) {
@@ -36,47 +42,35 @@ public class TaskSequence : Task {
         
         return false;
     }
-    
-    public override void Reset() {
-        foreach(var task in Tasks) {
-            task.Reset();
-        }
-        
-        _cursor = 0;
-    }
 }
 
-public class ParallelTaskGroup : Task {
-    public Task[]    Tasks;
-    public List<int> TasksOver;
+public struct ParallelTaskGroup {
+    public UpdateFunction[] Tasks;
+    public bool[]           TasksOver;
     
-    public ParallelTaskGroup(params Task[] tasks) {
+    public ParallelTaskGroup(params UpdateFunction[] tasks) {
         Assert(tasks != null);
         Assert(tasks.Length > 0);
         Tasks = tasks;
-        TasksOver = new List<int>(tasks.Length);
+        TasksOver = new bool[tasks.Length];
     }
     
-    public override bool Update() {
+    public bool Update() {
+        var tasksOverCount = 0;
         for(var i = 0; i < Tasks.Length; ++i) {
-            if(TasksOver.Contains(i) == false) {
-                if(Tasks[i].Update()) {
-                    TasksOver.Add(i);
-                }
+            if(TasksOver[i] == false) {
+                TasksOver[i] = Tasks[i].Invoke();
+            }
+
+            if(TasksOver[i] == true) {
+                tasksOverCount++;
             }
         }
         
-        if(TasksOver.Count == Tasks.Length) {
+        if(tasksOverCount == Tasks.Length) {
             return true;
         } else {
             return false;
         }
-    }
-    
-    public override void Reset() {
-        foreach(var task in Tasks) {
-            task.Reset();
-        }
-        TasksOver.Clear();
     }
 }

@@ -1,18 +1,17 @@
 using System;
-using System.Collections;
 using System.Runtime.CompilerServices;
 using static Assertions;
 
-public class TaskGroup {
-    public TaskPtr[] AllTasks;
-    public int[]     FreeTasks;
-    public int[]     RemovedTasks;
-    public int       RemovedTasksCount;
-    public int       TasksCount; //not active tasks
-    public int       FreeTasksCount;
+public unsafe class TaskGroup {
+    public Task[] AllTasks;
+    public int[]  FreeTasks;
+    public int[]  RemovedTasks;
+    public int    RemovedTasksCount;
+    public int    TasksCount; //not active tasks
+    public int    FreeTasksCount;
     
     public TaskGroup(int startCount) {
-        AllTasks          = new TaskPtr[startCount];
+        AllTasks          = new Task[startCount];
         FreeTasks         = new int[startCount];
         RemovedTasks      = new int[startCount];
         TasksCount        = 0;
@@ -20,7 +19,7 @@ public class TaskGroup {
         RemovedTasksCount = 0;
     }
     
-    public int NewTask(Task task) {
+    public int NewTask(UpdateFunction update) {
         var index = -1;
         
         if(FreeTasksCount > 0) {
@@ -33,9 +32,7 @@ public class TaskGroup {
             Array.Resize(ref AllTasks, TasksCount << 1);
         }
         
-        // AllTasks[index].Iterator = task;
-        // AllTasks[index].Index    = index;
-        AllTasks[index].Task   = task;
+        AllTasks[index].Update   = update;
         AllTasks[index].IsOver = false;
         
         return index;
@@ -43,7 +40,7 @@ public class TaskGroup {
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EndTask(int i) {
-        Assert(AllTasks[i].Task != null);
+        Assert(AllTasks[i].Update != null);
         
         if(RemovedTasksCount == RemovedTasks.Length) {
             Array.Resize(ref RemovedTasks, RemovedTasksCount << 1);
@@ -61,13 +58,13 @@ public class TaskGroup {
             }
             
             FreeTasks[FreeTasksCount++] = RemovedTasks[i];
-            AllTasks[RemovedTasks[i]].Task = null;
+            AllTasks[RemovedTasks[i]].Update = null;
         }
         RemovedTasksCount = 0;
         
         for(var i = 0; i < TasksCount; ++i) {
             if(!AllTasks[i].IsOver) {
-                AllTasks[i].IsOver = AllTasks[i].Task.Update();
+                AllTasks[i].IsOver = AllTasks[i].Update();
                 if(AllTasks[i].IsOver) {
                     EndTask(i);
                 }
