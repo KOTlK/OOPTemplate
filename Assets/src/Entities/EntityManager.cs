@@ -56,7 +56,7 @@ public class EntityManager : MonoBehaviour, ISave {
     public World             World;
     public List<Entity>      BakedEntities;
     public List<MovedEntity> MovedEntities   = new ();
-    public Dictionary<EntityType, List<uint>> EntitiesByType = new();
+    public Dictionary<EntityType, List<EntityHandle>> EntitiesByType = new();
     public PackedEntity[]    Entities        = new PackedEntity[128];
     public List<uint>        DynamicEntities = new ();
     public uint[]            RemoveQueue     = new uint[128];
@@ -73,7 +73,7 @@ public class EntityManager : MonoBehaviour, ISave {
         var entityTypes = Enum.GetValues(typeof(EntityType));
 
         foreach(var type in entityTypes) {
-            EntitiesByType.Add((EntityType)type, new List<uint>());
+            EntitiesByType.Add((EntityType)type, new List<EntityHandle>());
         }
     }
 
@@ -140,7 +140,10 @@ public class EntityManager : MonoBehaviour, ISave {
         entity.Em          = this;
         entity.World       = World;
 
-        EntitiesByType[entity.Type].Add(id);
+        EntitiesByType[entity.Type].Add(new EntityHandle {
+            Id = id,
+            Tag = tag
+        });
         
         if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             DynamicEntities.Add(id);
@@ -234,7 +237,10 @@ public class EntityManager : MonoBehaviour, ISave {
         obj.Em          = this;
         obj.World       = World;
 
-        EntitiesByType[obj.Type].Add(id);
+        EntitiesByType[obj.Type].Add(new EntityHandle {
+            Id = id,
+            Tag = tag
+        });
         
         if((obj.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             DynamicEntities.Add(id);
@@ -290,7 +296,10 @@ public class EntityManager : MonoBehaviour, ISave {
         e.Type  = type;
         e.Flags = flags;
 
-        EntitiesByType[e.Type].Add(id);
+        EntitiesByType[e.Type].Add(new EntityHandle {
+            Id = id,
+            Tag = tag
+        });
         
         if((e.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             DynamicEntities.Add(id);
@@ -328,7 +337,7 @@ public class EntityManager : MonoBehaviour, ISave {
                 Resize(ref FreeEntities, FreeEntitiesCount << 1);
             }
 
-            EntitiesByType[entity.Type].Remove(id);
+            EntitiesByType[entity.Type].Remove(GetHandle(id));
             
             if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
                 DynamicEntities.Remove(id);
