@@ -120,12 +120,17 @@ public class EntityManager : MonoBehaviour, ISave {
     
     public void BakeEntity(Entity entity) {
         uint tag = GetTag();
-        uint id = 0;
+        uint id;
         if(FreeEntitiesCount > 0){
             id = FreeEntities[--FreeEntitiesCount];
         }else{
             id = MaxEntitiesCount++;
         }
+
+        var handle = new EntityHandle {
+            Id = id,
+            Tag = tag
+        };
         
         if(MaxEntitiesCount == Entities.Length) {
             Resize(ref Entities, MaxEntitiesCount << 1);
@@ -136,14 +141,11 @@ public class EntityManager : MonoBehaviour, ISave {
         Entities[id].Type    = entity.Type;
         Entities[id].Tag     = tag;
         
-        entity.Id          = id;
+        entity.Handle      = handle;
         entity.Em          = this;
         entity.World       = World;
 
-        EntitiesByType[entity.Type].Add(new EntityHandle {
-            Id = id,
-            Tag = tag
-        });
+        EntitiesByType[entity.Type].Add(handle);
         
         if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             DynamicEntities.Add(id);
@@ -213,7 +215,7 @@ public class EntityManager : MonoBehaviour, ISave {
                                      Vector3 position, 
                                      Quaternion orientation, 
                                      Transform parent) {
-        uint id = 0;
+        uint id;
         uint tag = GetTag();
         
         if(FreeEntitiesCount > 0) {
@@ -221,6 +223,11 @@ public class EntityManager : MonoBehaviour, ISave {
         }else{
             id = MaxEntitiesCount++;
         }
+
+        var handle = new EntityHandle {
+            Id = id,
+            Tag = tag
+        };
         
         var obj = Instantiate(prefab, position, orientation, parent);
         
@@ -233,14 +240,11 @@ public class EntityManager : MonoBehaviour, ISave {
         Entities[id].Type    = obj.Type;
         Entities[id].Tag     = tag;
         
-        obj.Id     = id;
+        obj.Handle      = handle;
         obj.Em          = this;
         obj.World       = World;
 
-        EntitiesByType[obj.Type].Add(new EntityHandle {
-            Id = id,
-            Tag = tag
-        });
+        EntitiesByType[obj.Type].Add(handle);
         
         if((obj.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             DynamicEntities.Add(id);
@@ -256,10 +260,7 @@ public class EntityManager : MonoBehaviour, ISave {
         
         obj.OnCreate();
         
-        return new EntityHandle {
-            Id = id,
-            Tag = tag,
-        };
+        return handle;
     }
 
     public void PushEmptyEntity(uint id) {
@@ -284,22 +285,23 @@ public class EntityManager : MonoBehaviour, ISave {
         if(MaxEntitiesCount == Entities.Length) {
             Resize(ref Entities, MaxEntitiesCount << 1);
         }
+        var handle = new EntityHandle {
+            Id = id,
+            Tag = tag
+        };
         
         Entities[id].Entity  = e;
         Entities[id].Alive   = true;
         Entities[id].Type    = type;
         Entities[id].Tag     = tag;
         
-        e.Id    = id;
-        e.Em    = this;
-        e.World = World;
-        e.Type  = type;
-        e.Flags = flags;
+        e.Handle = handle;
+        e.Em     = this;
+        e.World  = World;
+        e.Type   = type;
+        e.Flags  = flags;
 
-        EntitiesByType[e.Type].Add(new EntityHandle {
-            Id = id,
-            Tag = tag
-        });
+        EntitiesByType[e.Type].Add(handle);
         
         if((e.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             DynamicEntities.Add(id);
@@ -345,9 +347,9 @@ public class EntityManager : MonoBehaviour, ISave {
 
             if((entity.Flags & EntityFlags.InsideHashTable) == EntityFlags.InsideHashTable) {
                 if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
-                    World.RemoveDynamicEntity(entity.Id);
+                    World.RemoveDynamicEntity(entity.Handle.Id);
                 } else if((entity.Flags & EntityFlags.Static) == EntityFlags.Static) {
-                    World.RemoveStaticEntity(entity.Id);
+                    World.RemoveStaticEntity(entity.Handle.Id);
                 }
             }
             

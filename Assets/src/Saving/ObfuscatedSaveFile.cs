@@ -253,7 +253,7 @@ public unsafe class ObfuscatedSaveFile : ISaveFile, IDisposable {
 
     private void WriteEntity(string name, Entity e) {
         BeginObject(name);
-        Write(nameof(e.Id), e.Id);
+        Write(nameof(e.Handle), e.Handle);
         WriteEnum(nameof(e.Type), e.Type);
         WriteEnum(nameof(e.Flags), e.Flags);
         WriteObject(nameof(e.Prefab), e.Prefab);
@@ -414,7 +414,7 @@ public unsafe class ObfuscatedSaveFile : ISaveFile, IDisposable {
     private Entity ReadEntity(string name, EntityManager em, uint tag) {
         BeginReadObject(name);
         Entity entity = null;
-        var id     = Read<uint>(nameof(entity.Id));
+        var id     = Read<uint>(nameof(entity.Handle));
         var type   = ReadEnum<EntityType>(nameof(entity.Type));
         var flags  = ReadEnum<EntityFlags>(nameof(entity.Flags));
         var link   = ReadValueType<ResourceLink>(nameof(entity.Prefab));
@@ -423,7 +423,7 @@ public unsafe class ObfuscatedSaveFile : ISaveFile, IDisposable {
         var scale = Read<Vector3>("Scale");
         entity = em.RecreateEntity(link, tag, position, orientation, scale, type, flags);
         entity.Load(this);
-        Assert(id == entity.Id, $"Entity Id's are not identical while reading entity. Recreated Id: {entity.Id}, Saved Id: {id}");
+        Assert(id == entity.Handle.Id, $"Entity Id's are not identical while reading entity. Recreated Id: {entity.Handle}, Saved Id: {id}");
         EndReadObject();
 
         return entity;

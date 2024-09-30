@@ -430,7 +430,7 @@ public class EntitiesDebugger : MonoBehaviour {
                                    currentHeight,
                                    selectWidth,
                                    additionalFieldHeight), "Select")) {
-                SelectedEntity = ((Entity)memberObject).Id;
+                SelectedEntity = ((Entity)memberObject).Handle.Id;
             }
         } else if (memberType.IsSubclassOf(typeof(MonoBehaviour))) {
             DrawGoTo((MonoBehaviour)memberObject,

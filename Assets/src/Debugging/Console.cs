@@ -145,7 +145,7 @@ public class Console : MonoBehaviour {
         if(Active && Input.GetKeyDown(KeyCode.Mouse0) && InputRect.Contains(mousePos) == false) {
             if(Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out var hit, float.MaxValue)) {
                 if(hit.collider.gameObject.TryGetComponent<Entity>(out var e)) {
-                    SelectedEntity = e.Id;
+                    SelectedEntity = e.Handle.Id;
                 } else {
                     SelectedEntity = 0;
                 }

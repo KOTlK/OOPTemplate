@@ -17,7 +17,7 @@ public enum EntityType
 }
 
 public class Entity : MonoBehaviour, ISave  {
-    public uint          Id;
+    public EntityHandle  Handle;
     public ResourceLink  Prefab;
     public EntityFlags   Flags;
     public EntityType    Type;
@@ -47,10 +47,18 @@ public class Entity : MonoBehaviour, ISave  {
     public virtual void Load(ISaveFile sf) {
     }
 
-    public void Move(Vector3 move) {
-        transform.position += move;
+    public void MoveEntity(Vector3 position) {
+        transform.position = position;
         Em.MovedEntities.Add(new MovedEntity{
-            Id = Id,
+            Id = Handle.Id,
+            NewPosition = position
+        });
+    }
+
+    public void MoveEntity(Vector3 position, Quaternion rotation) {
+        transform.SetPositionAndRotation(position, rotation);
+        Em.MovedEntities.Add(new MovedEntity{
+            Id = Handle.Id,
             NewPosition = transform.position
         });
     }
