@@ -56,6 +56,8 @@ public class Console : MonoBehaviour {
     public uint SelectedEntity = 0;
     public Rect InputRect = new();
 
+    public bool ManualActivation = false;
+
     public static Dictionary<string, Command> Commands;
 
     private void Awake() {
@@ -86,6 +88,19 @@ public class Console : MonoBehaviour {
                 }
             }
         }
+    }
+
+    public void Switch() {
+        if(Active) {
+            Active = false;
+        } else {
+            Active = true;
+            InputActive = true;
+            if(OpenProgress <= 0f) {
+                OpenProgress += Time.deltaTime;
+            }
+        }
+        InputText = "";
     }
 
     private void OnDestroy() {
@@ -127,7 +142,7 @@ public class Console : MonoBehaviour {
     }
 
     private void Update() {
-        if(Input.GetKeyDown(OpenKey)) {
+        if(Input.GetKeyDown(OpenKey) && ManualActivation == false) {
             if(Active) {
                 Active = false;
             } else {

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using static ArrayUtils;
+using static Assertions;
 
 public struct MovedEntity {
     public uint     Id;
@@ -53,20 +54,21 @@ public struct EntityHandle : ISave {
 }
 
 public class EntityManager : MonoBehaviour, ISave {
-    public World             World;
-    public List<Entity>      BakedEntities;
-    public List<MovedEntity> MovedEntities   = new ();
-    public Dictionary<EntityType, List<EntityHandle>> EntitiesByType = new();
-    public PackedEntity[]    Entities        = new PackedEntity[128];
-    public List<uint>        DynamicEntities = new ();
-    public uint[]            RemoveQueue     = new uint[128];
-    public uint[]            FreeEntities    = new uint[128];
+    public World                                        World;
+    public List<Entity>                                 BakedEntities;
+    public List<MovedEntity>                            MovedEntities           = new ();
+    public Dictionary<EntityType, List<EntityHandle>>   EntitiesByType          = new();
+    public Dictionary<int, EntityHandle>                EntityByInstanceId      = new(); // GetEntity by Unity InstanceId
+    public PackedEntity[]                               Entities                = new PackedEntity[128];
+    public List<uint>                                   DynamicEntities         = new ();
+    public uint[]                                       RemoveQueue             = new uint[128];
+    public uint[]                                       FreeEntities            = new uint[128];
     [HideInInspector] 
-    public uint              MaxEntitiesCount = 1;
+    public uint                                         MaxEntitiesCount        = 1;
     [HideInInspector]
-    public uint              CurrentTag = 1;
-    public uint              FreeEntitiesCount;
-    public uint              EntitiesToRemoveCount;
+    public uint                                         CurrentTag              = 1;
+    public uint                                         FreeEntitiesCount;
+    public uint                                         EntitiesToRemoveCount;
 
     private void Awake() {
         World.Create();
@@ -160,6 +162,7 @@ public class EntityManager : MonoBehaviour, ISave {
         }
         
         entity.OnBaking();
+        entity.RegisterInstanceId(this);
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -259,6 +262,7 @@ public class EntityManager : MonoBehaviour, ISave {
         }
         
         obj.OnCreate();
+        obj.RegisterInstanceId(this);
         
         return handle;
     }
@@ -316,18 +320,21 @@ public class EntityManager : MonoBehaviour, ISave {
         }
         
         e.OnCreate();
+        e.RegisterInstanceId(this);
         
         return e;
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void DestroyEntity(uint id) {
+    public void DestroyEntity(EntityHandle handle) {
         if(EntitiesToRemoveCount == RemoveQueue.Length) {
             Resize(ref RemoveQueue, EntitiesToRemoveCount << 1);
         }
-        
-        Entities[id].Alive = false;
-        RemoveQueue[EntitiesToRemoveCount++] = id;
+
+        if(IsValid(handle)) {
+            Entities[handle.Id].Alive = false;
+            RemoveQueue[EntitiesToRemoveCount++] = handle.Id;
+        }
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -354,7 +361,10 @@ public class EntityManager : MonoBehaviour, ISave {
             }
             
             Entities[id].Entity = null;
+            entity.UnRegisterInstanceId(this);
+#pragma warning disable 0618
             entity.Destroy();
+#pragma warning restore 0618
             FreeEntities[FreeEntitiesCount++] = id;
         }
     }
@@ -423,6 +433,19 @@ public class EntityManager : MonoBehaviour, ISave {
             Id = id,
             Tag = Entities[id].Tag
         };
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool GetEntityByInstanceId<T>(int instanceId, out T entity) 
+    where T : Entity {
+        if(EntityByInstanceId.ContainsKey(instanceId)) {
+            Assert(Entities[EntityByInstanceId[instanceId].Id].Entity is T);
+            entity = (T)Entities[EntityByInstanceId[instanceId].Id].Entity;
+            return true;
+        }else {
+            entity = null;
+            return false;
+        }
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

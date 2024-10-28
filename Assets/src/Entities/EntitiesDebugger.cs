@@ -59,6 +59,8 @@ public class EntitiesDebugger : MonoBehaviour {
     public float      EnumDrawHeight;
     public bool       EnumDrawnThisFrame = false;
 
+    public bool       ManualActivation = false;
+
     private void Awake() {
         DebugCamera.gameObject.SetActive(false);
     }
@@ -76,12 +78,13 @@ public class EntitiesDebugger : MonoBehaviour {
     }
 
     private void Update() {
-        if(Input.GetKey(KeyCode.LeftShift)) {
-            if(Input.GetKeyDown(KeyToEnable)) {
-                Switch();
+        if(ManualActivation == false) {
+            if(Input.GetKey(KeyCode.LeftShift)) {
+                if(Input.GetKeyDown(KeyToEnable)) {
+                    Switch();
+                }
             }
         }
-        
 
         if(Enabled) {
             if (Input.GetKey(KeyCode.Mouse1)) {
@@ -476,9 +479,19 @@ public class EntitiesDebugger : MonoBehaviour {
             case "UnityEngine.Transform": {
                 var t = (Transform)memberObject;
                 var offset = additionalFieldOffset;
-                var position = t.position;
-                var rotation = t.rotation.eulerAngles;
-                var scale    = t.localScale;
+                Vector3 position;
+                Vector3 rotation;
+                Vector3 scale;
+
+                if(t == null) {
+                    position = Vector3.zero;
+                    rotation = Vector3.zero;
+                    scale    = Vector3.zero;
+                } else {
+                    position = t.position;
+                    rotation = t.rotation.eulerAngles;
+                    scale    = t.localScale;
+                }
 
                 //Draw position
                 currentHeight += additionalFieldHeight;
@@ -526,9 +539,11 @@ public class EntitiesDebugger : MonoBehaviour {
                                          singleValueWidth,
                                          additionalFieldHeight);
 
-                t.position = position;
-                t.rotation = Quaternion.Euler(rotation);
-                t.localScale = scale;
+                if(t != null) {
+                    t.position = position;
+                    t.rotation = Quaternion.Euler(rotation);
+                    t.localScale = scale;
+                }
             }
             break;    
             case "System.Single": {
