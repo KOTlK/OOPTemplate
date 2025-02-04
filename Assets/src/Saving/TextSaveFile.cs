@@ -7,41 +7,7 @@ using System;
 
 using static Assertions;
 
-public interface ISaveFile {
-    void NewFile(float version);
-    void SaveToFile(string path, string name);
-    void NewFromExistingFile(string path);
-    void Write<T>(string name, T value);
-    void WriteObject(string name, ISave save);
-    void WriteArray<T>(string name, int itemsCount, T[] arr);
-    void WriteObjectArray<T>(string name, int itemsCount, T[] arr) 
-        where T : ISave;
-    void WriteNativeArray<T>(string name, int itemsCount, NativeArray<T> arr) 
-        where T : unmanaged;
-    void WritePackedEntity(string name, PackedEntity e, uint id);
-    void WriteEnum(string name, Enum e);
-    T Read<T>(string name, T defaultValue = default(T));
-    T[] ReadArray<T>(string name);
-    void ReadObject(string name, ISave obj);
-
-    T ReadValueType<T>(string name) 
-        where T : ISave;
-    T ReadEnum<T>(string name)
-        where T : Enum;
-    PackedEntity ReadPackedEntity(string name, EntityManager em);
-    T[] ReadObjectArray<T>(string name, Func<T> createObjectFunc) 
-        where T : ISave;
-    T[] ReadUnmanagedObjectArray<T>(string name) 
-        where T : unmanaged, ISave;
-    T[] ReadValueObjectArray<T>(string name)
-        where T : struct, ISave;
-    NativeArray<T> ReadNativeObjectArray<T>(string name, Allocator allocator)
-        where T : unmanaged, ISave;
-    NativeArray<T> ReadNativeArray<T>(string name, Allocator allocator) 
-        where T : unmanaged;
-}
-
-public class SaveFile : ISaveFile {
+public class TextSaveFile : SaveFileBase {
     public struct Field {
         public string Name;
         public string Value;
@@ -72,7 +38,6 @@ public class SaveFile : ISaveFile {
         }
     }
 
-    public float         Version;
     public string[]      LoadedLines;
     public int           LinesCount;
     public StringBuilder Sb = new();
@@ -81,53 +46,35 @@ public class SaveFile : ISaveFile {
     public Stack<ObjectNode> ObjectStack = new();
 
     public const int Offset = 4;
-    public const string Extension = ".sav";
     public const string Separator = " : ";
     
-    public void NewFile(float version) {
-        Version = version;
+    public override void NewFile(uint version) {
         Sb.Clear();
-        Write(nameof(Version), version);
+        base.NewFile(version);
         Sb.AppendLine();
     }
-    
-    public void SaveToFile(string path, string name) {
-        path += $"/{name}{Extension}";
-        if(File.Exists(path)) {
-            File.Delete(path);
-            File.CreateText(path).Close();
-        }
-        
-        File.WriteAllText(path, Sb.ToString());
-        // File.WriteAllText(path, Sb.ToString());
-    }
 
-    public void NewFromExistingFile(string path) {
-        Assert(path.EndsWith(Extension), $"File should ends with {Extension}");
-        Root = new ObjectNode
-        {
+    protected override void LoadFile(string path) {
+        Root = new ObjectNode {
             Fields = new(),
             NestedObjects = new()
         };
 
-        if(File.Exists(path)) {
-            LoadedLines = File.ReadAllLines(path);
-            LinesCount = LoadedLines.Length;
-        }
+        LoadedLines = File.ReadAllLines(path);
+        LinesCount = LoadedLines.Length;
 
-        //Parse file
-        var versionLine = LoadedLines[0].TrimStart().TrimEnd();
-        var nameObj = versionLine.Split(Separator);
-        if(nameObj.Length == 2) {
-            Assert(nameObj[0] == nameof(Version), "Can't read version, make sure the file is formated right");
-            if(float.TryParse(nameObj[1], out var version)) {
-                Version = version;
-            } else {
-                Debug.LogError("Can't parse version");
-            }
-        } else {
-            Debug.LogError("Can't parse version");
-        }
+        // var versionLine = LoadedLines[0].TrimStart().TrimEnd();
+        // var nameObj = versionLine.Split(Separator);
+        // if(nameObj.Length == 2) {
+        //     Assert(nameObj[0] == nameof(Version), "Can't read version, make sure the file is formated right");
+        //     if(float.TryParse(nameObj[1], out var version)) {
+        //         Version = version;
+        //     } else {
+        //         Debug.LogError("Can't parse version");
+        //     }
+        // } else {
+        //     Debug.LogError("Can't parse version");
+        // }
 
         var startLine = 1;
 
@@ -146,61 +93,63 @@ public class SaveFile : ISaveFile {
         }
     }
 
+    protected override void SaveFile(string path) {
+        File.CreateText(path).Close();
+        File.WriteAllText(path, Sb.ToString());
+    }
 
-    public void Write<T>(string name, T value) {
+    public override void Write<T>(T value, string name = null) {
         Sb.Append(name);
         AddNameSeparator();
         Sb.Append(Parse(value));
         NextLine();
     }
 
-    public void WriteObject(string name, ISave save) {
+    public override void WriteObject(ISave save, string name = null) {
         BeginObject(name);
         save.Save(this);
         EndObject();
     }
 
-    public void WriteArray<T>(string name, int itemsCount, T[] arr) {
+    public override void WriteArray<T>(int itemsCount, T[] arr, string name = null) {
         BeginObject(name);
-        Write("Count", itemsCount);
+        Write(itemsCount, "Count");
 
         for(var i = 0; i < itemsCount; ++i) {
-            Write($"{name}ArrayElement{i}", arr[i]);
+            Write(arr[i], $"{name}ArrayElement{i}");
             NextLine();
         }
         EndObject();
     }
 
-    public void WriteObjectArray<T>(string name, int itemsCount, T[] arr) 
-    where T : ISave {
+    public override void WriteObjectArray<T>(int itemsCount, T[] arr, string name = null) {
         BeginObject(name);
-        Write("Count", itemsCount);
+        Write(itemsCount, "Count");
 
         for(var i = 0; i < itemsCount; ++i) {
-            WriteObject($"{name}ArrayElement{i}", arr[i]);
+            WriteObject(arr[i], $"{name}ArrayElement{i}");
             NextLine();
         }
         EndObject();
     }
 
-    public void WriteNativeArray<T>(string name, int itemsCount, NativeArray<T> arr) 
-    where T : unmanaged {
+    public override void WriteNativeArray<T>(int itemsCount, NativeArray<T> arr, string name = null) {
         BeginObject(name);
-        Write("Count", itemsCount);
+        Write(itemsCount, "Count");
 
         for(var i = 0; i < itemsCount; ++i) {
-            Write($"{name}ArrayElement{i}", arr[i]);
+            Write(arr[i], $"{name}ArrayElement{i}");
             NextLine();
         }
         EndObject();
     }
 
-    public void WritePackedEntity(string name, PackedEntity e, uint id) {
+    public override void WritePackedEntity(PackedEntity e, uint id, string name = null) {
         BeginObject(name);
-        Write("Id", id);
-        Write(nameof(e.Tag), e.Tag);
-        WriteEnum(nameof(e.Type), e.Type);
-        Write(nameof(e.Alive), e.Alive);
+        Write(id, "Id");
+        Write(e.Tag, nameof(e.Tag));
+        WriteEnum(e.Type, nameof(e.Type));
+        Write(e.Alive, nameof(e.Alive));
         if(e.Alive) {
             WriteEntity(nameof(e.Entity), e.Entity);
         }
@@ -209,51 +158,51 @@ public class SaveFile : ISaveFile {
 
     private void WriteEntity(string name, Entity e) {
         BeginObject(name);
-        Write(nameof(e.Handle), e.Handle);
-        WriteEnum(nameof(e.Type), e.Type);
-        WriteEnum(nameof(e.Flags), e.Flags);
-        WriteObject(nameof(e.Prefab), e.Prefab);
-        Write("Position", e.transform.position);
-        Write("Orientation", e.transform.rotation);
-        Write("Scale", e.transform.localScale);
+        WriteObject(e.Handle, nameof(e.Handle));
+        WriteEnum(e.Type, nameof(e.Type));
+        WriteEnum(e.Flags, nameof(e.Flags));
+        WriteObject(e.Prefab, nameof(e.Prefab));
+        Write(e.transform.position, "Position");
+        Write(e.transform.rotation, "Orientation");
+        Write(e.transform.localScale, "Scale");
         e.Save(this);
         EndObject();
     }
 
-    public void WriteEnum(string name, Enum e) {
+    public override void WriteEnum(Enum e, string name = null) {
         var type = Enum.GetUnderlyingType(e.GetType()).ToString();
 
         switch(type) {
             case "System.Int32" : {
-                Write(name, (int)Convert.ChangeType(e, typeof(int)));
+                Write((int)Convert.ChangeType(e, typeof(int)), name);
             }
             break;
             case "System.UInt32" : {
-                Write(name, (uint)Convert.ChangeType(e, typeof(uint)));
+                Write((uint)Convert.ChangeType(e, typeof(uint)), name);
             }
             break;
             case "System.Int64" : {
-                Write(name, (long)Convert.ChangeType(e, typeof(long)));
+                Write((long)Convert.ChangeType(e, typeof(long)), name);
             }
             break;
             case "System.UInt64" : {
-                Write(name, (ulong)Convert.ChangeType(e, typeof(ulong)));
+                Write((ulong)Convert.ChangeType(e, typeof(ulong)), name);
             }
             break;
             case "System.Int16" : {
-                Write(name, (short)Convert.ChangeType(e, typeof(short)));
+                Write((short)Convert.ChangeType(e, typeof(short)), name);
             }
             break;
             case "System.UInt16" : {
-                Write(name, (ushort)Convert.ChangeType(e, typeof(ushort)));
+                Write((ushort)Convert.ChangeType(e, typeof(ushort)), name);
             }
             break;
             case "System.Byte" : {
-                Write(name, (byte)Convert.ChangeType(e, typeof(byte)));
+                Write((byte)Convert.ChangeType(e, typeof(byte)), name);
             }
             break;
             case "System.SByte" : {
-                Write(name, (sbyte)Convert.ChangeType(e, typeof(sbyte)));
+                Write((sbyte)Convert.ChangeType(e, typeof(sbyte)), name);
             }
             break;
             default : {
@@ -263,7 +212,7 @@ public class SaveFile : ISaveFile {
         }
     }
 
-    public T Read<T>(string name, T defaultValue = default(T)) {
+    public override T Read<T>(string name = null, T defaultValue = default(T)) {
         foreach(var field in GetCurrentNode().Fields) {
             if(field.Name == name) {
                 return Parse<T>(field.Value);
@@ -273,7 +222,7 @@ public class SaveFile : ISaveFile {
         return defaultValue;
     }
 
-    public T[] ReadArray<T>(string name) {
+    public override T[] ReadArray<T>(string name = null) {
         BeginReadObject(name);
         var count = Read<int>("Count");
         var arr   = new T[count];
@@ -287,14 +236,13 @@ public class SaveFile : ISaveFile {
         return arr;
     }
 
-    public void ReadObject(string name, ISave obj) {
+    public override void ReadObject(ISave obj, string name = null) {
         BeginReadObject(name);
         obj.Load(this);
         EndReadObject();
     }
 
-    public T ReadValueType<T>(string name) 
-    where T : ISave {
+    public override T ReadValueType<T>(string name = null) {
         var ret = default(T);
 
         BeginReadObject(name);
@@ -304,11 +252,26 @@ public class SaveFile : ISaveFile {
         return ret;
     }
 
-    public T ReadEnum<T>(string name) // @Incomplete add all basic enum types
-    where T : Enum {
+    public override T ReadEnum<T>(string name) {
         var type = Enum.GetUnderlyingType(typeof(T)).ToString();
         
         switch(type) {
+            case "System.Byte" : {
+                var val = Read<byte>(name);
+                return (T)Enum.ToObject(typeof(T), val);
+            }
+            case "System.SByte" : {
+                var val = Read<sbyte>(name);
+                return (T)Enum.ToObject(typeof(T), val);
+            }
+            case "System.Int16" : {
+                var val = Read<short>(name);
+                return (T)Enum.ToObject(typeof(T), val);
+            }
+            case "System.UInt16" : {
+                var val = Read<ushort>(name);
+                return (T)Enum.ToObject(typeof(T), val);
+            }
             case "System.Int32" : {
                 var val = Read<int>(name);
                 return (T)Enum.ToObject(typeof(T), val);
@@ -325,22 +288,6 @@ public class SaveFile : ISaveFile {
                 var val = Read<ulong>(name);
                 return (T)Enum.ToObject(typeof(T), val);
             }
-            case "System.Int16" : {
-                var val = Read<short>(name);
-                return (T)Enum.ToObject(typeof(T), val);
-            }
-            case "System.UInt16" : {
-                var val = Read<ushort>(name);
-                return (T)Enum.ToObject(typeof(T), val);
-            }
-            case "System.Byte" : {
-                var val = Read<byte>(name);
-                return (T)Enum.ToObject(typeof(T), val);
-            }
-            case "System.SByte" : {
-                var val = Read<sbyte>(name);
-                return (T)Enum.ToObject(typeof(T), val);
-            }
             default : {
                 Debug.LogError($"Can't read enum with underlying type: {type}");
             }
@@ -350,7 +297,7 @@ public class SaveFile : ISaveFile {
         return default;
     }
 
-    public PackedEntity ReadPackedEntity(string name, EntityManager em) {
+    public override PackedEntity ReadPackedEntity(EntityManager em, string name = null) {
         BeginReadObject(name);
         var ent = new PackedEntity();
         var id  = Read<uint>("Id");
@@ -370,7 +317,7 @@ public class SaveFile : ISaveFile {
     private Entity ReadEntity(string name, EntityManager em, uint tag) {
         BeginReadObject(name);
         Entity entity = null;
-        var id     = Read<uint>(nameof(entity.Handle));
+        var handle = ReadValueType<EntityHandle>(nameof(entity.Handle));
         var type   = ReadEnum<EntityType>(nameof(entity.Type));
         var flags  = ReadEnum<EntityFlags>(nameof(entity.Flags));
         var link   = ReadValueType<ResourceLink>(nameof(entity.Prefab));
@@ -379,21 +326,20 @@ public class SaveFile : ISaveFile {
         var scale = Read<Vector3>("Scale");
         entity = em.RecreateEntity(link, tag, position, orientation, scale, type, flags);
         entity.Load(this);
-        Assert(id == entity.Handle.Id, $"Entity Id's are not identical while reading entity. Recreated Id: {entity.Handle}, Saved Id: {id}");
+        Assert(handle.Id == entity.Handle.Id, $"Entity Id's are not identical while reading entity. Recreated Id: {entity.Handle.Id}, Saved Id: {handle.Id}");
         EndReadObject();
 
         return entity;
     }
 
-    public T[] ReadObjectArray<T>(string name, Func<T> createObjectFunc) 
-    where T : ISave {
+    public override T[] ReadObjectArray<T>(Func<T> createObjectFunc, string name = null) {
         BeginReadObject(name);
         var count = Read<int>("Count");
         var arr   = new T[count];
 
         for(var i = 0; i < count; ++i) {
             var obj = createObjectFunc();
-            ReadObject($"{name}ArrayElement{i}", obj);
+            ReadObject(obj, $"{name}ArrayElement{i}");
             arr[i] = obj;
         }
 
@@ -402,8 +348,7 @@ public class SaveFile : ISaveFile {
         return arr;
     }
 
-    public T[] ReadUnmanagedObjectArray<T>(string name) 
-    where T : unmanaged, ISave {
+    public override T[] ReadUnmanagedObjectArray<T>(string name = null) {
         BeginReadObject(name);
         var count = Read<int>("Count");
         var arr   = new T[count];
@@ -417,8 +362,7 @@ public class SaveFile : ISaveFile {
         return arr;
     }
 
-    public T[] ReadValueObjectArray<T>(string name)
-    where T : struct, ISave {
+    public override T[] ReadValueObjectArray<T>(string name = null) {
         BeginReadObject(name);
         var count = Read<int>("Count");
         var arr = new T[count];
@@ -432,8 +376,7 @@ public class SaveFile : ISaveFile {
         return arr;
     }
 
-    public NativeArray<T> ReadNativeObjectArray<T>(string name, Allocator allocator)
-    where T : unmanaged, ISave {
+    public override NativeArray<T> ReadNativeObjectArray<T>(Allocator allocator, string name = null) {
         BeginReadObject(name);
         var count = Read<int>("Count");
         var arr = new NativeArray<T>(count, allocator);
@@ -447,8 +390,7 @@ public class SaveFile : ISaveFile {
         return arr;
     }
 
-    public NativeArray<T> ReadNativeArray<T>(string name, Allocator allocator) 
-    where T : unmanaged {
+    public override NativeArray<T> ReadNativeArray<T>(Allocator allocator, string name = null) {
         BeginReadObject(name);
         var count = Read<int>("Count");
         var arr   = new NativeArray<T>(count, allocator);
@@ -597,6 +539,34 @@ public class SaveFile : ISaveFile {
             case "System.String" : {
                 return (T)(object)value;
             }
+            case "System.Byte" : {
+                if(byte.TryParse(value, out var v)) {
+                    return (T)(object)v;
+                } else {
+                    return defaultValue;
+                }
+            }
+            case "System.SByte" : {
+                if(sbyte.TryParse(value, out var v)) {
+                    return (T)(object)v;
+                } else {
+                    return defaultValue;
+                }
+            }
+            case "System.Int16" : {
+                if(short.TryParse(value, out var v)) {
+                    return (T)(object)v;
+                } else {
+                    return defaultValue;
+                }
+            }
+            case "System.UInt16" : {
+                if(ushort.TryParse(value, out var v)) {
+                    return (T)(object)v;
+                } else {
+                    return defaultValue;
+                }
+            }
             case "System.Int32" : {
                 if(int.TryParse(value, out var v)) {
                     return (T)(object)v;
@@ -620,34 +590,6 @@ public class SaveFile : ISaveFile {
             }
             case "System.UInt64" : {
                 if(ulong.TryParse(value, out var v)) {
-                    return (T)(object)v;
-                } else {
-                    return defaultValue;
-                }
-            }
-            case "System.Int16" : {
-                if(short.TryParse(value, out var v)) {
-                    return (T)(object)v;
-                } else {
-                    return defaultValue;
-                }
-            }
-            case "System.UInt16" : {
-                if(ushort.TryParse(value, out var v)) {
-                    return (T)(object)v;
-                } else {
-                    return defaultValue;
-                }
-            }
-            case "System.Byte" : {
-                if(byte.TryParse(value, out var v)) {
-                    return (T)(object)v;
-                } else {
-                    return defaultValue;
-                }
-            }
-            case "System.SByte" : {
-                if(sbyte.TryParse(value, out var v)) {
                     return (T)(object)v;
                 } else {
                     return defaultValue;

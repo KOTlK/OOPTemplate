@@ -43,8 +43,8 @@ public struct EntityHandle : ISave {
     }
 
     public void Save(ISaveFile sf) {
-        sf.Write(nameof(Id), Id);
-        sf.Write(nameof(Tag), Tag);
+        sf.Write(Id, nameof(Id));
+        sf.Write(Tag, nameof(Tag));
     }
 
     public void Load(ISaveFile sf) {
@@ -85,10 +85,10 @@ public class EntityManager : MonoBehaviour, ISave {
     }
 
     public virtual void Save(ISaveFile sf) { // @Incomplete Save and Load World?
-        sf.Write(nameof(MaxEntitiesCount), MaxEntitiesCount);
-        sf.Write(nameof(CurrentTag), CurrentTag);
+        sf.Write(MaxEntitiesCount, nameof(MaxEntitiesCount));
+        sf.Write(CurrentTag, nameof(CurrentTag));
         for(uint i = 1; i < MaxEntitiesCount; ++i) {
-            sf.WritePackedEntity($"EntityNum{i}", Entities[i], i);
+            sf.WritePackedEntity(Entities[i], i, $"EntityNum{i}");
         }
     }
 
@@ -108,7 +108,7 @@ public class EntityManager : MonoBehaviour, ISave {
         CurrentTag        = sf.Read<uint>(nameof(CurrentTag));
         Entities          = new PackedEntity[entitiesCount];
         for(var i = 1; i < entitiesCount; ++i) {
-            Entities[i] = sf.ReadPackedEntity($"EntityNum{i}", this);
+            Entities[i] = sf.ReadPackedEntity(this, $"EntityNum{i}");
         }
     }
         

@@ -36,7 +36,9 @@ public class Main : MonoBehaviour {
     private void Update() {
         Clock.Update();
         TaskRunner.RunTaskGroup(TaskGroupType.ExecuteAlways);
+        EntityManager.Execute();
     }
+    
     [ConsoleCommand("quit")]
     public static void Quit() {
 #if UNITY_EDITOR

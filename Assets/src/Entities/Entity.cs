@@ -11,8 +11,7 @@ public enum EntityFlags
     InsideHashTable = 1 << 3,
 }
 
-public enum EntityType
-{
+public enum EntityType {
     // types goes here
 }
 
