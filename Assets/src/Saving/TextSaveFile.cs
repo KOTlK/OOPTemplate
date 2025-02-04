@@ -62,21 +62,9 @@ public class TextSaveFile : SaveFileBase {
 
         LoadedLines = File.ReadAllLines(path);
         LinesCount = LoadedLines.Length;
+        ObjectStack.Clear();
 
-        // var versionLine = LoadedLines[0].TrimStart().TrimEnd();
-        // var nameObj = versionLine.Split(Separator);
-        // if(nameObj.Length == 2) {
-        //     Assert(nameObj[0] == nameof(Version), "Can't read version, make sure the file is formated right");
-        //     if(float.TryParse(nameObj[1], out var version)) {
-        //         Version = version;
-        //     } else {
-        //         Debug.LogError("Can't parse version");
-        //     }
-        // } else {
-        //     Debug.LogError("Can't parse version");
-        // }
-
-        var startLine = 1;
+        var startLine = 0;
 
         while(startLine < LinesCount) {
             var line = LoadedLines[startLine].TrimStart().TrimEnd();
@@ -91,6 +79,8 @@ public class TextSaveFile : SaveFileBase {
                 startLine++;
             }
         }
+        
+        ObjectStack.Push(Root);
     }
 
     protected override void SaveFile(string path) {

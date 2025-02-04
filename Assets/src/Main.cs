@@ -17,6 +17,7 @@ public class Main : MonoBehaviour {
         Events         = new Events();
         ResourceSystem = new ResourceSystem();
         SaveSystem     = new SaveSystem();
+        TypeVersion.Init();
 
         Singleton<SaveSystem>.Create(SaveSystem);
         Singleton<ResourceSystem>.Create(ResourceSystem);

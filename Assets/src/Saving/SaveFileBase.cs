@@ -6,7 +6,7 @@ using Unity.Collections;
 using System.IO;
 
 public abstract class SaveFileBase : ISaveFile, IDisposable {
-    public uint Version;
+    public uint Version = 1;
     public const string Extension = ".sav";
 
     public virtual void Dispose() {
@@ -32,7 +32,8 @@ public abstract class SaveFileBase : ISaveFile, IDisposable {
 
         if(File.Exists(path)) {
             LoadFile(path);
-            Version = Read<uint>();
+            Version = Read<uint>(nameof(Version));
+            Debug.Log(Version);
         } else {
             Debug.LogError($"File at: {path} does not exist");
         }
