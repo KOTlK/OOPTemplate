@@ -349,14 +349,14 @@ public unsafe class BinarySaveFile : SaveFileBase {
             case "UnityEngine.Vector3" : {
                 var val = (Vector3)(object)value;
                 var ret = Arena.Alloc<byte>((uint)sizeof(Vector3));
+                var ptr = (byte*)(&val);
 
                 for(var i = 0; i < 3; ++i) {
-                    var bytes = BitConverter.GetBytes(val[i]);
-
                     for(var j = 0; j < sizeof(float); ++j) {
-                        ret[i * sizeof(float) + j] = bytes[j];
+                        ret[i * sizeof(float) + j] = ptr[j + i * sizeof(float)];
                     }
                 }
+
                 return new UnmanagedArray<byte>(ret, (uint)sizeof(Vector3));
             }
             case "UnityEngine.Vector3Int" : {
@@ -375,14 +375,14 @@ public unsafe class BinarySaveFile : SaveFileBase {
             case "UnityEngine.Vector2" : {
                 var val = (Vector2)(object)value;
                 var ret = Arena.Alloc<byte>((uint)sizeof(Vector2));
+                var ptr = (byte*)(&val);
 
                 for(var i = 0; i < 2; ++i) {
-                    var bytes = BitConverter.GetBytes(val[i]);
-
                     for(var j = 0; j < sizeof(float); ++j) {
-                        ret[i * sizeof(float) + j] = bytes[j];
+                        ret[i * sizeof(float) + j] = ptr[j + i * sizeof(float)];
                     }
                 }
+
                 return new UnmanagedArray<byte>(ret, (uint)sizeof(Vector2));
             }
             case "UnityEngine.Vector2Int" : {
@@ -399,61 +399,61 @@ public unsafe class BinarySaveFile : SaveFileBase {
             case "UnityEngine.Vector4" : {
                 var val = (Vector4)(object)value;
                 var ret = Arena.Alloc<byte>((uint)sizeof(Vector4));
+                var ptr = (byte*)(&val);
 
                 for(var i = 0; i < 4; ++i) {
-                    var bytes = BitConverter.GetBytes(val[i]);
-
                     for(var j = 0; j < sizeof(float); ++j) {
-                        ret[i * sizeof(float) + j] = bytes[j];
+                        ret[i * sizeof(float) + j] = ptr[j + i * sizeof(float)];
                     }
                 }
+
                 return new UnmanagedArray<byte>(ret, (uint)sizeof(Vector4));
             }
             case "UnityEngine.Quaternion" : {
                 var val = (Quaternion)(object)value;
                 var ret = Arena.Alloc<byte>((uint)sizeof(Vector3));
                 var euler = val.eulerAngles;
+                var ptr = (byte*)(&euler);
 
                 for(var i = 0; i < 3; ++i) {
-                    var bytes = BitConverter.GetBytes(euler[i]);
-
                     for(var j = 0; j < sizeof(float); ++j) {
-                        ret[i * sizeof(float) + j] = bytes[j];
+                        ret[i * sizeof(float) + j] = ptr[j + i * sizeof(float)];
                     }
                 }
+
                 return new UnmanagedArray<byte>(ret, (uint)sizeof(Vector3));
             }
             case "UnityEngine.Matrix4x4" : {
                 var val = (Matrix4x4)(object)value;
                 var ret = Arena.Alloc<byte>((uint)sizeof(Matrix4x4));
+                var ptr = (byte*)(&val);
 
                 for(var i = 0; i < 16; ++i) {
-                    var bytes = BitConverter.GetBytes(val[i]);
-
                     for(var j = 0; j < sizeof(float); ++j) {
-                        ret[i * sizeof(float) + j] = bytes[j];
+                        ret[i * sizeof(float) + j] = ptr[j + i * sizeof(float)];
                     }
                 }
+
                 return new UnmanagedArray<byte>(ret, (uint)sizeof(Matrix4x4));
             }
             case "System.Single" : {
-                var val   = (float)(object)value;
-                var ret   = Arena.Alloc<byte>(sizeof(float));
-                var bytes = BitConverter.GetBytes(val);
+                var val = (float)(object)value;
+                var ret = Arena.Alloc<byte>(sizeof(float));
+                var ptr = (byte*)(&val);
 
                 for(var i = 0; i < sizeof(float); ++i) {
-                    ret[i] = bytes[i];
+                    ret[i] = ptr[i];
                 }
 
                 return new UnmanagedArray<byte>(ret, sizeof(float));
             }
             case "System.Double" : {
-                var val   = (double)(object)value;
-                var ret   = Arena.Alloc<byte>(sizeof(double));
-                var bytes = BitConverter.GetBytes(val);
+                var val = (double)(object)value;
+                var ret = Arena.Alloc<byte>(sizeof(double));
+                var ptr = (byte*)(&val);
 
                 for(var i = 0; i < sizeof(double); ++i) {
-                    ret[i] = bytes[i];
+                    ret[i] = ptr[i];
                 }
 
                 return new UnmanagedArray<byte>(ret, sizeof(double));
@@ -538,17 +538,17 @@ public unsafe class BinarySaveFile : SaveFileBase {
             case "System.SByte" : {
                 var val   = (sbyte)(object)value;
                 var ret   = Arena.Alloc<byte>(sizeof(sbyte));
-                ret[0]    = BitConverter.GetBytes(val)[0];
+                ret[0]    = (byte)val;
 
                 return new UnmanagedArray<byte>(ret, sizeof(sbyte));
             }
             case "System.Boolean" : {
                 var val   = (bool)(object)value;
                 var ret   = Arena.Alloc<byte>(sizeof(bool));
-                var bytes = BitConverter.GetBytes(val);
+                var ptr   = (byte*)(&val);
 
                 for(var i = 0; i < sizeof(bool); ++i) {
-                    ret[i] = bytes[i];
+                    ret[i] = ptr[i];
                 }
 
                 return new UnmanagedArray<byte>(ret, sizeof(bool));
@@ -648,25 +648,34 @@ public unsafe class BinarySaveFile : SaveFileBase {
                 return (T)(object)o;
             }
             case "System.Boolean" : {
-                var o = (T)(object)BitConverter.ToBoolean(LoadedBytes, Pointer);
-                Pointer += sizeof(bool);
-                return o;
+                fixed(byte *ptr = LoadedBytes) {
+                    bool *o = (bool*)(ptr + Pointer);
+                    Pointer += sizeof(bool);
+                    return (T)(object)*o;
+                }
             }
             case "System.Single" : {
-                var o = (T)(object)BitConverter.ToSingle(LoadedBytes, Pointer);
-                Pointer += sizeof(float);
-                return o;
+                fixed(byte *ptr = LoadedBytes) {
+                    float *o = (float*)(ptr + Pointer);
+                    Pointer  += sizeof(float);
+                    return (T)(object)*o;
+                }
             }
             case "System.Double" : {
-                var o = (T)(object)BitConverter.ToDouble(LoadedBytes, Pointer);
-                Pointer += sizeof(double);
-                return o;
+                fixed(byte *ptr = LoadedBytes) {
+                    double *o = (double*)(ptr + Pointer);
+                    Pointer   += sizeof(double);
+                    return (T)(object)*o;
+                }
             }
             case "UnityEngine.Vector3" : {
                 var ret = new Vector3();
 
                 for(var i = 0; i < 3; ++i) {
-                    ret[i] = BitConverter.ToSingle(LoadedBytes, Pointer + i * sizeof(float));
+                    fixed(byte *ptr = LoadedBytes) {
+                        float *o = (float*)(ptr + (Pointer + i * sizeof(float)));
+                        ret[i] = *o;
+                    }
                 }
 
                 Pointer += 3 * sizeof(float);
@@ -693,7 +702,10 @@ public unsafe class BinarySaveFile : SaveFileBase {
                 var ret = new Vector2();
 
                 for(var i = 0; i < 2; ++i) {
-                    ret[i] = BitConverter.ToSingle(LoadedBytes, Pointer + i * sizeof(float));
+                    fixed(byte *ptr = LoadedBytes) {
+                        float *o = (float*)(ptr + (Pointer + i * sizeof(float)));
+                        ret[i] = *o;
+                    }
                 }
 
                 Pointer += 2 * sizeof(float);
@@ -718,7 +730,10 @@ public unsafe class BinarySaveFile : SaveFileBase {
                 var ret = new Vector4();
 
                 for(var i = 0; i < 4; ++i) {
-                    ret[i] = BitConverter.ToSingle(LoadedBytes, Pointer + i * sizeof(float));
+                    fixed(byte *ptr = LoadedBytes) {
+                        float *o = (float*)(ptr + (Pointer + i * sizeof(float)));
+                        ret[i] = *o;
+                    }
                 }
 
                 Pointer += 4 * sizeof(float);
@@ -729,7 +744,10 @@ public unsafe class BinarySaveFile : SaveFileBase {
                 var euler = new Vector3();
 
                 for(var i = 0; i < 3; ++i) {
-                    euler[i] = BitConverter.ToSingle(LoadedBytes, Pointer + i * sizeof(float));
+                    fixed(byte *ptr = LoadedBytes) {
+                        float *o = (float*)(ptr + (Pointer + i * sizeof(float)));
+                        euler[i] = *o;
+                    }
                 }
 
                 var ret = Quaternion.Euler(euler);
@@ -741,7 +759,10 @@ public unsafe class BinarySaveFile : SaveFileBase {
                 var ret = new Matrix4x4();
 
                 for(var i = 0; i < 16; ++i) {
-                    ret[i] = BitConverter.ToSingle(LoadedBytes, Pointer + i * sizeof(float));
+                    fixed(byte *ptr = LoadedBytes) {
+                        float *o = (float*)(ptr + (Pointer + i * sizeof(float)));
+                        ret[i] = *o;
+                    }
                 }
 
                 Pointer += 16 * sizeof(float);
