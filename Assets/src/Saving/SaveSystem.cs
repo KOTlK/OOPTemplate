@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 public class SaveSystem : IDisposable {
     public enum SaveType {
@@ -14,10 +15,12 @@ public class SaveSystem : IDisposable {
 
     public SaveSystem() {
         ChangeSaveFileType(SaveType.Binary);
+        TypeVersion.Init(Application.persistentDataPath);
     }
 
     public SaveSystem(SaveType type) {
         ChangeSaveFileType(type);
+        TypeVersion.Init(Application.persistentDataPath);
     }
 
     public void Dispose() {
@@ -31,7 +34,7 @@ public class SaveSystem : IDisposable {
             Sf.Dispose();
         }
 
-        switch (Type) {
+        switch (type) {
             case SaveType.Text : {
                 Sf = new TextSaveFile();
             }
