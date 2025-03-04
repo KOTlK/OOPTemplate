@@ -1,141 +1,131 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Unity.Collections;
-#if !UNITY_EDITOR
-using Unity.Collections.LowLevel.Unsafe;
-#endif
-using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility;
-using static UnityEngine.Assertions.Assert;
 
-public unsafe class EventData{
-    public void*     Data;
-    public int       Count;
-    public int       Capacity;
-    public Type      BindedType;
-    public Allocator Allocator;
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Create<T>(int initialCapacity, Allocator allocator)
-    where T : unmanaged{
-        Count      = 0;
-        Capacity   = initialCapacity;
-        Allocator  = allocator;
-        BindedType = typeof(T);
-#if UNITY_EDITOR
-        Data       = MallocTracked(sizeof(T) * initialCapacity, AlignOf<T>(), allocator, 0);
-#else
-        Data       = Malloc(sizeof(T) * initialCapacity, AlignOf<T>(), allocator);
-#endif
-    }
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Free() {
-#if UNITY_EDITOR
-        FreeTracked(Data, Allocator);
-#else
-        UnsafeUtility.Free(Data, Allocator);
-#endif
-    }
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public T Get<T>(int index)
-    where T : unmanaged{
-        return ReadArrayElement<T>(Data, index);
-    }
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ref T GetByRef<T>(int index)
-    where T : unmanaged{
-        return ref ArrayElementAsRef<T>(Data, index);
-    }
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Clear(){
-        Count = 0;
-    }
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Push<T>(T evnt)
-    where T : unmanaged{
-        IsTrue(typeof(T) == BindedType);
-        if(Count >= Capacity){
-            Capacity = Capacity << 1;
-#if UNITY_EDITOR
-            var newData = MallocTracked(sizeof(T) * Capacity, AlignOf<T>(), Allocator, 0);
-#else
-            var newData = Malloc(sizeof(T) * Capacity, AlignOf<T>(), Allocator);
-#endif
-            MemMove(newData, Data, sizeof(T) * Count);
-            FreeTracked(Data, Allocator);
-            Data = newData;
+using static Assertions;
+
+public delegate void EventListener(IEvent evnt);
+
+public interface IEvent {
+}
+
+public class EventQueue {
+    public Queue<IEvent>                   Queue = new();
+    public Dictionary<Type, EventListener> Listeners = new();
+
+    public void Clear() {
+        Queue.Clear();
+        foreach(var (type, listener) in Listeners) {
+            Listeners[type] = delegate {};
         }
+    }
+
+    public void RaiseEvent<T> (T evnt) 
+    where T : IEvent {
+        Queue.Enqueue(evnt);
+    }
+
+    public void Subscribe<T>(EventListener listener) 
+    where T : IEvent {
+        var type = typeof(T);
         
-        WriteArrayElement(Data, Count++, evnt);
+        if(Listeners.ContainsKey(type) == false) {
+            Listeners[type] = delegate {};
+        }
+
+        Listeners[type] += listener;
+    }
+
+    public void Unsubscribe<T>(EventListener listener) 
+    where T : IEvent {
+        var type = typeof(T);
+        Listeners[type] -= listener;
+    }
+
+    public void Execute() {
+        while(Queue.Count > 0) {
+            var evnt = Queue.Dequeue();
+            var type = evnt.GetType();
+
+            Listeners[type](evnt);
+        }
     }
 }
 
-public class Events : IDisposable{
-    public delegate void EventHandler(EventData events);
-    public Dictionary<Type, EventData>           AllEvents = new();
-    public Dictionary<Type, EventHandler>        Handlers = new();
-    
-    private readonly int _initialCapacity = 30;
-    
-    public Events(){
-    }
-    
-    public Events(int initialCapacity){
-        _initialCapacity = initialCapacity;
-    }
-    
-    public void RaiseEvent<T>(T evnt)
-    where T : unmanaged{
-        var type = typeof(T);
-        
-        if(!AllEvents.ContainsKey(type)){
-            var eventData = new EventData();
-            eventData.Create<T>(_initialCapacity, Allocator.Persistent);
-            AllEvents.Add(type, eventData);
+public static class Events {
+    public static EventQueue GeneralQueue = new();
+
+    public static Dictionary<Type, EventQueue> PrivateQueues = new();
+
+    public static void Init() {
+        GeneralQueue.Clear();
+
+        foreach(var (type, queue) in PrivateQueues) {
+            queue.Clear();
         }
-        
-        AllEvents[type].Push<T>(evnt);
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void HandleEvents<T>()
-    where T : unmanaged{
-        var type = typeof(T);
-        
-        if(AllEvents.ContainsKey(type)){
-            IsTrue(Handlers.ContainsKey(type));
-            Handlers[type].Invoke(AllEvents[type]);
-            AllEvents[type].Clear();
+    public static void RaiseGeneralEvent<T> (T evnt) 
+    where T : IEvent {
+        GeneralQueue.RaiseEvent(evnt);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void SubscribeToGeneral<T>(EventListener listener) 
+    where T : IEvent {
+        GeneralQueue.Subscribe<T>(listener);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void UnsubscribeFromGeneral<T>(EventListener listener) 
+    where T : IEvent {
+        GeneralQueue.Unsubscribe<T>(listener);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ExecuteGeneral() {
+        GeneralQueue.Execute();
+    }
+
+    public static void RaisePrivateEvent<T, U>(U evnt) 
+    where U : IEvent {
+        var queueType = typeof(T);
+
+        if(PrivateQueues.ContainsKey(queueType) == false) {
+            PrivateQueues.Add(queueType, new EventQueue());
         }
+
+        PrivateQueues[queueType].RaiseEvent(evnt);
     }
-    
-    public void AddHandler<T>(EventHandler handler)
-    where T : unmanaged{
-        var type = typeof(T);
-        if(!Handlers.ContainsKey(type)){
-            Handlers.Add(type, delegate{});
+
+    public static void SubscribeToPrivate<T, U>(EventListener listener) 
+    where U : IEvent {
+        var queueType = typeof(T);
+
+        if(PrivateQueues.ContainsKey(queueType) == false) {
+            PrivateQueues.Add(queueType, new EventQueue());
         }
-        
-        Handlers[typeof(T)] += handler;
+
+        PrivateQueues[queueType].Subscribe<U>(listener);
     }
-    
-    public void RemoveHandler<T>(EventHandler handler)
-    where T : unmanaged{
-        var type = typeof(T);
-        
-        IsTrue(Handlers.ContainsKey(type));
-        
-        Handlers[type] -= handler;
+
+    public static void UnsubscribeFromPrivate<T, U>(EventListener listener) 
+    where U : IEvent {
+        var queueType = typeof(T);
+        PrivateQueues[queueType].Unsubscribe<U>(listener);
     }
-    
-    public void Dispose(){
-        foreach(var (type, events) in AllEvents){
-            events.Free();
+
+    public static void ExecutePrivateQueue<T>() {
+        Assert(PrivateQueues.ContainsKey(typeof(T)));
+        PrivateQueues[typeof(T)].Execute();
+    }
+
+    public static void ExecuteAll() {
+        GeneralQueue.Execute();
+
+        foreach(var (_, queue) in PrivateQueues) {
+            queue.Execute();
         }
     }
 }

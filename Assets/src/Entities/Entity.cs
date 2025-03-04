@@ -23,6 +23,32 @@ public class Entity : MonoBehaviour, ISave  {
     public EntityManager Em;
     public World         World;
     public bool          AutoBake;
+
+    public Vector3 Position {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => transform.position;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set => transform.position = value;
+    }
+
+    public Quaternion Rotation {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => transform.rotation;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set => transform.rotation = value;
+    }
+
+    public Vector3 Scale {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => transform.localScale;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set => transform.localScale = value;
+    }
+
+    public Matrix4x4 ObjectToWorld {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => transform.localToWorldMatrix;
+    }
     
     private void Awake() {
         if(AutoBake) {
