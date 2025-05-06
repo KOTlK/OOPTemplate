@@ -33,7 +33,7 @@ public unsafe class BinarySaveFile : SaveFileBase {
         Pointer     += (int)b.Length;
     }
 
-    
+
     public override void NewFile(uint version) {
         Pointer = 0;
         Arena.Free();
@@ -101,7 +101,6 @@ public unsafe class BinarySaveFile : SaveFileBase {
 
     public override void WritePackedEntity(PackedEntity e, uint id, string name = null) {
         Write(id);
-        Write(e.Tag);
         WriteEnum(e.Type);
         Write(e.Alive);
         if(e.Alive) {
@@ -113,7 +112,7 @@ public unsafe class BinarySaveFile : SaveFileBase {
         WriteObject(e.Handle);
         WriteEnum(e.Type);
         WriteEnum(e.Flags);
-        WriteObject(e.Prefab);
+        Write(e.Name);
         Write(e.transform.position);
         Write(e.transform.rotation);
         Write(e.transform.localScale);
@@ -198,7 +197,7 @@ public unsafe class BinarySaveFile : SaveFileBase {
 
     public override T ReadEnum<T>(string name = null) {
         var type = Enum.GetUnderlyingType(typeof(T)).ToString();
-        
+
         switch(type) {
             case "System.Int32" : {
                 var val = Read<int>();
@@ -244,28 +243,27 @@ public unsafe class BinarySaveFile : SaveFileBase {
     public override PackedEntity ReadPackedEntity(EntityManager em, string name = null) {
         var ent = new PackedEntity();
         var id  = Read<uint>();
-        ent.Tag = Read<uint>();
         ent.Type = ReadEnum<EntityType>(nameof(ent.Type));
         ent.Alive = Read<bool>();
         if(ent.Alive) {
-            ent.Entity = ReadEntity(null, em, ent.Tag);
+            ent.Entity = ReadEntity(null, em);
         } else {
             em.PushEmptyEntity(id);
         }
 
         return ent;
     }
-    
-    private Entity ReadEntity(string name, EntityManager em, uint tag) {
+
+    private Entity ReadEntity(string name, EntityManager em) {
         Entity entity = null;
         var handle = ReadValueType<EntityHandle>();
         var type   = ReadEnum<EntityType>(nameof(entity.Type));
         var flags  = ReadEnum<EntityFlags>(nameof(entity.Flags));
-        var link   = ReadValueType<ResourceLink>(nameof(entity.Prefab));
+        var link   = Read<string>(nameof(entity.Name));
         var position = Read<Vector3>();
         var orientation = Read<Quaternion>();
         var scale = Read<Vector3>();
-        entity = em.RecreateEntity(link, tag, position, orientation, scale, type, flags);
+        entity = em.RecreateEntity(link, position, orientation, scale, type, flags);
         entity.Load(this);
         Assert(handle.Id == entity.Handle.Id, $"Entity Id's are not identical while reading entity. Recreated Id: {entity.Handle.Id}, Saved Id: {handle.Id}");
 
@@ -303,7 +301,7 @@ public unsafe class BinarySaveFile : SaveFileBase {
         for(var i = 0; i < count; ++i) {
             arr[i] = ReadValueType<T>(null);
         }
-        
+
         return arr;
     }
 
@@ -470,7 +468,7 @@ public unsafe class BinarySaveFile : SaveFileBase {
             case "System.UInt16" : {
                 var val   = (ushort)(object)value;
                 var ret   = Arena.Alloc<byte>(sizeof(ushort));
-                
+
                 ret[0] = (byte)(val & 0xff);
                 ret[1] = (byte)((val >> 8) & 0xff);
 
@@ -563,9 +561,9 @@ public unsafe class BinarySaveFile : SaveFileBase {
         switch (type) {
             case "System.String" : {
                 var str = Arena.Alloc<char>((uint)stringLength);
-                
+
                 for(var i = 0; i < stringLength; ++i) {
-                    short o = (short)(LoadedBytes[Pointer + 1 + sizeof(short) * i] << 8 | 
+                    short o = (short)(LoadedBytes[Pointer + 1 + sizeof(short) * i] << 8 |
                                       LoadedBytes[Pointer + sizeof(short) * i]);
                     str[i] = (char)o;
                 }
@@ -585,7 +583,7 @@ public unsafe class BinarySaveFile : SaveFileBase {
                 return (T)(object)o;
             }
             case "System.Int16" : {
-                short o = (short)(LoadedBytes[Pointer + 1] << 8 | 
+                short o = (short)(LoadedBytes[Pointer + 1] << 8 |
                                   LoadedBytes[Pointer]);
 
                 Pointer += sizeof(short);
@@ -593,7 +591,7 @@ public unsafe class BinarySaveFile : SaveFileBase {
                 return (T)(object)o;
             }
             case "System.UInt16" : {
-                ushort o = (ushort)(LoadedBytes[Pointer + 1] << 8 | 
+                ushort o = (ushort)(LoadedBytes[Pointer + 1] << 8 |
                                     LoadedBytes[Pointer]);
 
                 Pointer += sizeof(ushort);
@@ -602,8 +600,8 @@ public unsafe class BinarySaveFile : SaveFileBase {
             }
             case "System.Int32" : {
                 int o = LoadedBytes[Pointer + 3] << 24 |
-                        LoadedBytes[Pointer + 2] << 16 | 
-                        LoadedBytes[Pointer + 1] << 8  | 
+                        LoadedBytes[Pointer + 2] << 16 |
+                        LoadedBytes[Pointer + 1] << 8  |
                         LoadedBytes[Pointer];
 
                 Pointer += sizeof(int);
@@ -612,8 +610,8 @@ public unsafe class BinarySaveFile : SaveFileBase {
             }
             case "System.UInt32" : {
                 uint o = (uint)(LoadedBytes[Pointer + 3] << 24 |
-                                LoadedBytes[Pointer + 2] << 16 | 
-                                LoadedBytes[Pointer + 1] << 8  | 
+                                LoadedBytes[Pointer + 2] << 16 |
+                                LoadedBytes[Pointer + 1] << 8  |
                                 LoadedBytes[Pointer]);
                 Pointer += sizeof(uint);
 
@@ -625,10 +623,10 @@ public unsafe class BinarySaveFile : SaveFileBase {
                          (long)LoadedBytes[Pointer + 5] << 40 |
                          (long)LoadedBytes[Pointer + 4] << 32 |
                          (long)LoadedBytes[Pointer + 3] << 24 |
-                         (long)LoadedBytes[Pointer + 2] << 16 | 
-                         (long)LoadedBytes[Pointer + 1] << 8  | 
+                         (long)LoadedBytes[Pointer + 2] << 16 |
+                         (long)LoadedBytes[Pointer + 1] << 8  |
                          (long)LoadedBytes[Pointer];
-                         
+
                 Pointer += sizeof(long);
 
                 return (T)(object)o;
@@ -639,8 +637,8 @@ public unsafe class BinarySaveFile : SaveFileBase {
                           (ulong)LoadedBytes[Pointer + 5] << 40 |
                           (ulong)LoadedBytes[Pointer + 4] << 32 |
                           (ulong)LoadedBytes[Pointer + 3] << 24 |
-                          (ulong)LoadedBytes[Pointer + 2] << 16 | 
-                          (ulong)LoadedBytes[Pointer + 1] << 8  | 
+                          (ulong)LoadedBytes[Pointer + 2] << 16 |
+                          (ulong)LoadedBytes[Pointer + 1] << 8  |
                           (ulong)LoadedBytes[Pointer];
 
                 Pointer += sizeof(ulong);
@@ -775,7 +773,7 @@ public unsafe class BinarySaveFile : SaveFileBase {
         }
     }
 
-    public unsafe struct UnmanagedArray<T> 
+    public unsafe struct UnmanagedArray<T>
     where T : unmanaged {
         public T   *Data;
         public uint Length;

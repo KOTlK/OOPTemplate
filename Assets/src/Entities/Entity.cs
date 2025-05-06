@@ -9,15 +9,15 @@ public enum EntityFlags
     Dynamic         = 1 << 1,
     Static          = 1 << 2,
     InsideHashTable = 1 << 3,
+    UpdatePhysics   = 1 << 4,
 }
 
 public enum EntityType {
-    // types goes here
 }
 
 public class Entity : MonoBehaviour, ISave  {
+    public string        Name;
     public EntityHandle  Handle;
-    public ResourceLink  Prefab;
     public EntityFlags   Flags;
     public EntityType    Type;
     public EntityManager Em;
@@ -49,7 +49,7 @@ public class Entity : MonoBehaviour, ISave  {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => transform.localToWorldMatrix;
     }
-    
+
     private void Awake() {
         if(AutoBake) {
             if(Singleton<EntityManager>.Exist) {
@@ -65,12 +65,12 @@ public class Entity : MonoBehaviour, ISave  {
     public virtual void UnRegisterInstanceId(EntityManager em) {
         em.EntityByInstanceId.Remove(gameObject.GetInstanceID());
     }
-    
+
     public virtual void OnBaking(){ }
     public virtual void OnCreate(){ }
     public virtual void Execute(){ }
-    
-    [Obsolete("This method should not be called to destroy Entity, use EntityManager.DestroyEntity(Handle) instead", false)]
+    public virtual void UpdatePhysics(){ }
+
     public virtual void Destroy() {
         Destroy(gameObject);
     }
@@ -97,10 +97,10 @@ public class Entity : MonoBehaviour, ISave  {
         });
     }
 
-    public (Vector3 velocity, int collisionCount) 
+    public (Vector3 velocity, int collisionCount)
             MovePhysicsEntityNoGravity(Vector3 initialVelocity,
                                        Quaternion   rotation,
-                                       float        radius, 
+                                       float        radius,
                                        RaycastHit[] hitBuffer,
                                        float        skinWidth           = 0.01f,
                                        int          maxIterationCount   = 8) {
@@ -118,7 +118,7 @@ public class Entity : MonoBehaviour, ISave  {
             if(Physics.SphereCast(position, radius, direction, out hit, velocityLeft)) {
                 velocityLeft    -= hit.distance + skinWidth;
                 position        += frameVelocity.normalized * (hit.distance - skinWidth);
-                frameVelocity   = Vector3.ProjectOnPlane(frameVelocity, hit.normal).normalized 
+                frameVelocity   = Vector3.ProjectOnPlane(frameVelocity, hit.normal).normalized
                                 * velocityLeft;
 
                 if(collisionCount >= bufferLength) {
@@ -156,5 +156,27 @@ public class Entity : MonoBehaviour, ISave  {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public uint QueryNearbyEntities(float radius, uint[] buffer, bool includeStatic = true) {
         return World.QueryNearbyEntities(transform.position, buffer, radius, includeStatic);
+    }
+
+    // Helper methods to get and destroy entities without calling Em...
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool GetEntity(EntityHandle handle, out Entity e) {
+        return Em.GetEntity(handle, out e);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool GetEntity<T>(EntityHandle handle, out T e)
+    where T : Entity {
+        return Em.GetEntity<T>(handle, out e);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void DestroyThisEntity() {
+        Em.DestroyEntity(Handle);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void DestroyEntity(EntityHandle handle) {
+        Em.DestroyEntity(handle);
     }
 }

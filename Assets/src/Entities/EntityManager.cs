@@ -14,7 +14,7 @@ public struct MovedEntity {
 public struct PackedEntity {
     public Entity        Entity;
     public EntityType    Type;
-    public uint          Tag; // Unique identifier for slot
+    public uint          Tag; // Slot's generational index
     public bool          Alive;
 }
 
@@ -23,22 +23,20 @@ public struct EntityHandle : ISave {
     public uint Tag;
 
     public static readonly EntityHandle Zero = new EntityHandle { Id = 0, Tag = 0};
-    
+
     public static bool operator==(EntityHandle lhs, EntityHandle rhs) {
         return lhs.Id == rhs.Id && lhs.Tag == rhs.Tag;
     }
-    
+
     public static bool operator!=(EntityHandle lhs, EntityHandle rhs) {
         return !(lhs == rhs);
     }
 
-    public override bool Equals(object obj)
-    {
+    public override bool Equals(object obj) {
         return (EntityHandle)obj == this;
     }
 
-    public override int GetHashCode()
-    {
+    public override int GetHashCode() {
         return HashCode.Combine(Id, Tag);
     }
 
@@ -60,17 +58,21 @@ public class EntityManager : MonoBehaviour, ISave {
     public Dictionary<EntityType, List<EntityHandle>>   EntitiesByType          = new();
     public Dictionary<int, EntityHandle>                EntityByInstanceId      = new(); // GetEntity by Unity InstanceId
     public PackedEntity[]                               Entities                = new PackedEntity[128];
-    public List<uint>                                   DynamicEntities         = new ();
+    public List<uint>                                   DynamicEntities         = new();
+    public List<uint>                                   PhysicsEntities         = new();
     public uint[]                                       RemoveQueue             = new uint[128];
     public uint[]                                       FreeEntities            = new uint[128];
-    [HideInInspector] 
+    [HideInInspector]
     public uint                                         MaxEntitiesCount        = 1;
     [HideInInspector]
-    public uint                                         CurrentTag              = 1;
     public uint                                         FreeEntitiesCount;
     public uint                                         EntitiesToRemoveCount;
 
     private void Awake() {
+        EntityByInstanceId.Clear();
+        EntitiesByType.Clear();
+        DynamicEntities.Clear();
+        PhysicsEntities.Clear();
         World.Create();
         var entityTypes = Enum.GetValues(typeof(EntityType));
 
@@ -86,7 +88,6 @@ public class EntityManager : MonoBehaviour, ISave {
 
     public virtual void Save(ISaveFile sf) { // @Incomplete Save and Load World?
         sf.Write(MaxEntitiesCount, nameof(MaxEntitiesCount));
-        sf.Write(CurrentTag, nameof(CurrentTag));
         for(uint i = 1; i < MaxEntitiesCount; ++i) {
             sf.WritePackedEntity(Entities[i], i, $"EntityNum{i}");
         }
@@ -97,7 +98,7 @@ public class EntityManager : MonoBehaviour, ISave {
         for(uint i = 0; i < MaxEntitiesCount; ++i) {
             DestroyEntityImmediate(i);
         }
-        
+
         MaxEntitiesCount      = 1;
         FreeEntitiesCount     = 0;
         EntitiesToRemoveCount = 0;
@@ -105,50 +106,49 @@ public class EntityManager : MonoBehaviour, ISave {
         DynamicEntities.Clear();
 
         var entitiesCount = sf.Read<uint>(nameof(MaxEntitiesCount));
-        CurrentTag        = sf.Read<uint>(nameof(CurrentTag));
         Entities          = new PackedEntity[entitiesCount];
         for(var i = 1; i < entitiesCount; ++i) {
             Entities[i] = sf.ReadPackedEntity(this, $"EntityNum{i}");
         }
     }
-        
+
     public void BakeEntities() {
         for(var i = 0; i < BakedEntities.Count; ++i) {
             BakeEntity(BakedEntities[i]);
         }
-        
+
         BakedEntities.Clear();
     }
-    
+
     public void BakeEntity(Entity entity) {
-        uint tag = GetTag();
         uint id;
         if(FreeEntitiesCount > 0){
             id = FreeEntities[--FreeEntitiesCount];
         }else{
             id = MaxEntitiesCount++;
         }
+        uint tag = Entities[id].Tag;
 
         var handle = new EntityHandle {
             Id = id,
             Tag = tag
         };
-        
+
         if(MaxEntitiesCount == Entities.Length) {
             Resize(ref Entities, MaxEntitiesCount << 1);
         }
-        
+
         Entities[id].Entity  = entity;
         Entities[id].Alive   = true;
         Entities[id].Type    = entity.Type;
         Entities[id].Tag     = tag;
-        
+
         entity.Handle      = handle;
         entity.Em          = this;
         entity.World       = World;
 
         EntitiesByType[entity.Type].Add(handle);
-        
+
         if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             DynamicEntities.Add(id);
         }
@@ -160,97 +160,138 @@ public class EntityManager : MonoBehaviour, ISave {
                 World.AddStaticEntity(id, entity.transform.position);
             }
         }
-        
+
         entity.OnBaking();
         entity.RegisterInstanceId(this);
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public EntityHandle CreateEntity(Entity prefab, Vector3 position) {
-        return CreateEntity(prefab, position, Quaternion.identity, Vector3.one, null);
-    }
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public EntityHandle CreateEntity(Entity prefab, 
-                                     Vector3 position, 
-                                     Quaternion orientation, 
-                                     Vector3 scale) {
-        return CreateEntity(prefab, position, orientation, scale, null);
+    public T CreateEntity<T>(string     name,
+                             Vector3    position,
+                             Quaternion orientation)
+    where T : Entity {
+        var entity = CreateEntityReturnReference(name,
+                                                 position,
+                                                 orientation);
+        return (T)entity;
     }
 
-    public EntityHandle CreateEntity(ResourceLink link,
-                                     Vector3 position, 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public T CreateEntity<T>(string     name,
+                             Vector3    position,
+                             Quaternion orientation,
+                             Transform  parent)
+    where T : Entity {
+        var entity = CreateEntityReturnReference(name,
+                                                 position,
+                                                 orientation,
+                                                 parent);
+        return (T)entity;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Entity CreateEntityReturnReference(string     name,
+                                              Vector3    position,
+                                              Quaternion orientation) {
+        var prefab = Singleton<ResourceSystem>.Instance.Load<Entity>(name);
+        var (_, reference) = CreateEntity(prefab,
+                                          position,
+                                          orientation,
+                                          prefab.transform.localScale,
+                                          null);
+
+        return reference;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Entity CreateEntityReturnReference(string     name,
+                                              Vector3    position,
+                                              Quaternion orientation,
+                                              Transform  parent) {
+        var prefab = Singleton<ResourceSystem>.Instance.Load<Entity>(name);
+        var (_, reference) = CreateEntity(prefab,
+                                          position,
+                                          orientation,
+                                          prefab.transform.localScale,
+                                          parent);
+
+        return reference;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public EntityHandle CreateEntity(string     name,
+                                     Vector3    position,
                                      Quaternion orientation) {
-        var prefab = Singleton<ResourceSystem>.Instance.Load<Entity>(link);
-        var handle = CreateEntity(prefab, position, orientation, null);
-        if(GetEntity(handle, out var e)) {
-            e.transform.localScale = prefab.transform.localScale;
-        }
+        var prefab = Singleton<ResourceSystem>.Instance.Load<Entity>(name);
+        var (handle, _) = CreateEntity(prefab,
+                                       position,
+                                       orientation,
+                                       prefab.transform.localScale,
+                                       null);
+
         return handle;
     }
 
-    public EntityHandle CreateEntity(ResourceLink link,
-                                     Vector3 position, 
-                                     Quaternion orientation,
-                                     Transform parent) {
-        var prefab = Singleton<ResourceSystem>.Instance.Load<Entity>(link);
-        var handle = CreateEntity(prefab, position, orientation, parent);
-        if(GetEntity(handle, out var e)) {
-            e.transform.localScale = prefab.transform.localScale;
-        }
-        return handle;
-    }
-
-    public EntityHandle CreateEntity(Entity prefab,
-                                     Vector3 position,
-                                     Quaternion orientation, 
-                                     Vector3 scale,
-                                     Transform parent) {
-        var handle = CreateEntity(prefab, position, orientation, parent);
-        if(GetEntity(handle, out var e)) {
-            e.transform.localScale = scale;
-        }
-        return handle;
-    }
-    
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public EntityHandle CreateEntity(Entity prefab, 
-                                     Vector3 position, 
-                                     Quaternion orientation, 
-                                     Transform parent) {
+    public EntityHandle CreateEntity(string     name,
+                                     Vector3    position,
+                                     Quaternion orientation,
+                                     Transform  parent) {
+        var prefab = Singleton<ResourceSystem>.Instance.Load<Entity>(name);
+        var (handle, _) = CreateEntity(prefab,
+                                       position,
+                                       orientation,
+                                       prefab.transform.localScale,
+                                       parent);
+
+        return handle;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public (EntityHandle, Entity) CreateEntity(Entity     prefab,
+                                               Vector3    position,
+                                               Quaternion orientation,
+                                               Vector3    localScale,
+                                               Transform  parent) {
         uint id;
-        uint tag = GetTag();
-        
+
         if(FreeEntitiesCount > 0) {
             id = FreeEntities[--FreeEntitiesCount];
         }else{
             id = MaxEntitiesCount++;
         }
 
+        uint tag = Entities[id].Tag;
+
         var handle = new EntityHandle {
             Id = id,
             Tag = tag
         };
-        
+
         var obj = Instantiate(prefab, position, orientation, parent);
-        
+        obj.transform.localScale = localScale;
+
         if(MaxEntitiesCount == Entities.Length) {
             Resize(ref Entities, MaxEntitiesCount << 1);
         }
-        
+
         Entities[id].Entity  = obj;
         Entities[id].Alive   = true;
         Entities[id].Type    = obj.Type;
         Entities[id].Tag     = tag;
-        
+
         obj.Handle      = handle;
         obj.Em          = this;
         obj.World       = World;
 
         EntitiesByType[obj.Type].Add(handle);
-        
+
         if((obj.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             DynamicEntities.Add(id);
+        }
+
+        if((obj.Flags & EntityFlags.UpdatePhysics) == EntityFlags.UpdatePhysics) {
+            PhysicsEntities.Add(id);
         }
 
         if((obj.Flags & EntityFlags.InsideHashTable) == EntityFlags.InsideHashTable) {
@@ -260,11 +301,11 @@ public class EntityManager : MonoBehaviour, ISave {
                 World.AddStaticEntity(id, position);
             }
         }
-        
+
         obj.OnCreate();
         obj.RegisterInstanceId(this);
-        
-        return handle;
+
+        return (handle, obj);
     }
 
     public void PushEmptyEntity(uint id) {
@@ -273,32 +314,30 @@ public class EntityManager : MonoBehaviour, ISave {
         MaxEntitiesCount++;
     }
 
-    public Entity RecreateEntity(ResourceLink link, 
-                                 uint        tag, 
-                                 Vector3     position, 
+    public Entity RecreateEntity(string      name,
+                                 Vector3     position,
                                  Quaternion  orientation,
                                  Vector3     scale,
                                  EntityType  type,
                                  EntityFlags flags) {
-        var resource = Singleton<ResourceSystem>.Instance.Load<Entity>(link);
+        var resource = Singleton<ResourceSystem>.Instance.Load<Entity>(name);
         var e        = Instantiate(resource, position, orientation);
         e.transform.localScale = scale;
 
         uint id = MaxEntitiesCount++;
-        
+
         if(MaxEntitiesCount == Entities.Length) {
             Resize(ref Entities, MaxEntitiesCount << 1);
         }
         var handle = new EntityHandle {
             Id = id,
-            Tag = tag
+            Tag = Entities[id].Tag
         };
-        
+
         Entities[id].Entity  = e;
         Entities[id].Alive   = true;
         Entities[id].Type    = type;
-        Entities[id].Tag     = tag;
-        
+
         e.Handle = handle;
         e.Em     = this;
         e.World  = World;
@@ -306,7 +345,7 @@ public class EntityManager : MonoBehaviour, ISave {
         e.Flags  = flags;
 
         EntitiesByType[e.Type].Add(handle);
-        
+
         if((e.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             DynamicEntities.Add(id);
         }
@@ -318,13 +357,13 @@ public class EntityManager : MonoBehaviour, ISave {
                 World.AddStaticEntity(id, position);
             }
         }
-        
+
         e.OnCreate();
         e.RegisterInstanceId(this);
-        
+
         return e;
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void DestroyEntity(EntityHandle handle) {
         if(EntitiesToRemoveCount == RemoveQueue.Length) {
@@ -336,20 +375,24 @@ public class EntityManager : MonoBehaviour, ISave {
             RemoveQueue[EntitiesToRemoveCount++] = handle.Id;
         }
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void DestroyEntityImmediate(uint id) {
         var entity = Entities[id].Entity;
-        
-        if(entity != null){
+
+        if(entity != null) {
             if(FreeEntitiesCount == FreeEntities.Length) {
                 Resize(ref FreeEntities, FreeEntitiesCount << 1);
             }
 
             EntitiesByType[entity.Type].Remove(GetHandle(id));
-            
+
             if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
                 DynamicEntities.Remove(id);
+            }
+
+            if((entity.Flags & EntityFlags.UpdatePhysics) == EntityFlags.UpdatePhysics) {
+                PhysicsEntities.Remove(id);
             }
 
             if((entity.Flags & EntityFlags.InsideHashTable) == EntityFlags.InsideHashTable) {
@@ -359,22 +402,21 @@ public class EntityManager : MonoBehaviour, ISave {
                     World.RemoveStaticEntity(entity.Handle.Id);
                 }
             }
-            
+
             Entities[id].Entity = null;
             entity.UnRegisterInstanceId(this);
-#pragma warning disable 0618
             entity.Destroy();
-#pragma warning restore 0618
             FreeEntities[FreeEntitiesCount++] = id;
+            Entities[id].Tag++;
         }
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void DestroyAllEntities() {
         for(uint i = 0; i < MaxEntitiesCount; ++i) {
             DestroyEntityImmediate(i);
         }
-        
+
         MaxEntitiesCount      = 1;
         FreeEntitiesCount     = 0;
         EntitiesToRemoveCount = 0;
@@ -382,7 +424,7 @@ public class EntityManager : MonoBehaviour, ISave {
         DynamicEntities.Clear();
         World.Dispose();
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Execute() {
         if(MovedEntities.Count > 0) {
@@ -398,12 +440,21 @@ public class EntityManager : MonoBehaviour, ISave {
         EntitiesToRemoveCount = 0;
 
         World.Execute();
-        
+
         for(var i = 0; i < DynamicEntities.Count; ++i) {
             Entities[DynamicEntities[i]].Entity.Execute();
         }
     }
-    
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void UpdatePhysics() {
+        var count = PhysicsEntities.Count;
+
+        for(var i = 0; i < count; ++i) {
+            Entities[PhysicsEntities[i]].Entity.Execute();
+        }
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool GetEntity(EntityHandle handle, out Entity e) {
         if(IsValid(handle)) {
@@ -416,7 +467,7 @@ public class EntityManager : MonoBehaviour, ISave {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool GetEntity<T>(EntityHandle handle, out T e) 
+    public bool GetEntity<T>(EntityHandle handle, out T e)
     where T : Entity {
         if(IsValid(handle)) {
             e = (T)Entities[handle.Id].Entity;
@@ -436,7 +487,7 @@ public class EntityManager : MonoBehaviour, ISave {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool GetEntityByInstanceId<T>(int instanceId, out T entity) 
+    public bool GetEntityByInstanceId<T>(int instanceId, out T entity)
     where T : Entity {
         if(EntityByInstanceId.ContainsKey(instanceId)) {
             Assert(Entities[EntityByInstanceId[instanceId].Id].Entity is T);
@@ -447,10 +498,10 @@ public class EntityManager : MonoBehaviour, ISave {
             return false;
         }
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool IsAlive(uint id) {
-        return Entities[id].Alive;
+    public bool IsAlive(EntityHandle handle) {
+        return IsValid(handle) && Entities[handle.Id].Alive;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -468,21 +519,12 @@ public class EntityManager : MonoBehaviour, ISave {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public IEnumerable<T> GetAllEntitiesWithType<T>(EntityType type) 
+    public IEnumerable<T> GetAllEntitiesWithType<T>(EntityType type)
     where T : Entity {
         for(var i = 0; i < MaxEntitiesCount; ++i) {
             if(Entities[i].Type == type && Entities[i].Alive) {
                 yield return (T)Entities[i].Entity;
             }
         }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private uint GetTag() {
-        if(CurrentTag == uint.MaxValue) {
-            CurrentTag = 1;
-        }
-        
-        return CurrentTag++;
     }
 }

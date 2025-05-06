@@ -47,7 +47,7 @@ public class TextSaveFile : SaveFileBase {
 
     public const int Offset = 4;
     public const string Separator = " : ";
-    
+
     public override void NewFile(uint version) {
         Sb.Clear();
         base.NewFile(version);
@@ -79,7 +79,7 @@ public class TextSaveFile : SaveFileBase {
                 startLine++;
             }
         }
-        
+
         ObjectStack.Push(Root);
     }
 
@@ -137,7 +137,6 @@ public class TextSaveFile : SaveFileBase {
     public override void WritePackedEntity(PackedEntity e, uint id, string name = null) {
         BeginObject(name);
         Write(id, "Id");
-        Write(e.Tag, nameof(e.Tag));
         WriteEnum(e.Type, nameof(e.Type));
         Write(e.Alive, nameof(e.Alive));
         if(e.Alive) {
@@ -151,7 +150,7 @@ public class TextSaveFile : SaveFileBase {
         WriteObject(e.Handle, nameof(e.Handle));
         WriteEnum(e.Type, nameof(e.Type));
         WriteEnum(e.Flags, nameof(e.Flags));
-        WriteObject(e.Prefab, nameof(e.Prefab));
+        Write(e.Name, nameof(e.Name));
         Write(e.transform.position, "Position");
         Write(e.transform.rotation, "Orientation");
         Write(e.transform.localScale, "Scale");
@@ -244,7 +243,7 @@ public class TextSaveFile : SaveFileBase {
 
     public override T ReadEnum<T>(string name) {
         var type = Enum.GetUnderlyingType(typeof(T)).ToString();
-        
+
         switch(type) {
             case "System.Byte" : {
                 var val = Read<byte>(name);
@@ -291,11 +290,10 @@ public class TextSaveFile : SaveFileBase {
         BeginReadObject(name);
         var ent = new PackedEntity();
         var id  = Read<uint>("Id");
-        ent.Tag = Read<uint>(nameof(ent.Tag));
         ent.Type = ReadEnum<EntityType>(nameof(ent.Type));
         ent.Alive = Read<bool>(nameof(ent.Alive));
         if(ent.Alive) {
-            ent.Entity = ReadEntity(nameof(ent.Entity), em, ent.Tag);
+            ent.Entity = ReadEntity(nameof(ent.Entity), em);
         } else {
             em.PushEmptyEntity(id);
         }
@@ -303,18 +301,18 @@ public class TextSaveFile : SaveFileBase {
 
         return ent;
     }
-    
-    private Entity ReadEntity(string name, EntityManager em, uint tag) {
+
+    private Entity ReadEntity(string name, EntityManager em) {
         BeginReadObject(name);
         Entity entity = null;
         var handle = ReadValueType<EntityHandle>(nameof(entity.Handle));
         var type   = ReadEnum<EntityType>(nameof(entity.Type));
         var flags  = ReadEnum<EntityFlags>(nameof(entity.Flags));
-        var link   = ReadValueType<ResourceLink>(nameof(entity.Prefab));
+        var link   = Read<string>(nameof(entity.Name));
         var position = Read<Vector3>("Position");
         var orientation = Read<Quaternion>("Orientation");
         var scale = Read<Vector3>("Scale");
-        entity = em.RecreateEntity(link, tag, position, orientation, scale, type, flags);
+        entity = em.RecreateEntity(link, position, orientation, scale, type, flags);
         entity.Load(this);
         Assert(handle.Id == entity.Handle.Id, $"Entity Id's are not identical while reading entity. Recreated Id: {entity.Handle.Id}, Saved Id: {handle.Id}");
         EndReadObject();
@@ -360,7 +358,7 @@ public class TextSaveFile : SaveFileBase {
         for(var i = 0; i < count; ++i) {
             arr[i] = ReadValueType<T>($"{name}ArrayElement{i}");
         }
-        
+
         EndReadObject();
 
         return arr;
@@ -374,7 +372,7 @@ public class TextSaveFile : SaveFileBase {
         for(var i = 0; i < count; ++i) {
             arr[i] = ReadValueType<T>($"{name}ArrayElement{i}");
         }
-        
+
         EndReadObject();
 
         return arr;
@@ -402,13 +400,13 @@ public class TextSaveFile : SaveFileBase {
         if(ObjectStack.Count == 0) {
             ObjectStack.Push(Root);
             var currentNode = GetCurrentNode();
-            
+
             if(currentNode.NestedObjects.TryGetValue(name, out var obj)) {
                 ObjectStack.Push(obj);
             }
         } else {
             var currentNode = GetCurrentNode();
-            
+
             if(currentNode.NestedObjects.TryGetValue(name, out var obj)) {
                 ObjectStack.Push(obj);
             }
@@ -692,14 +690,14 @@ public class TextSaveFile : SaveFileBase {
                     } else if(value[i] == ')' && value[i + 1] == ',') {
                         if(float.TryParse(currString, out var val)) {
                             currentVector[currentComp] = val;
-                        } 
+                        }
 
                         ret.SetRow(currentRow++, currentVector);
                     } else if (value[i] == ',' && value[i - 1] != ')') {
                         if(float.TryParse(currString, out var val)) {
                             currentVector[currentComp] = val;
-                        } 
-                        
+                        }
+
                         currentComp++;
                         currString = "";
                     } else if(value[i] != '(' && value[i] != ')' && value[i] != ' ' && value[i] != ',') {

@@ -1,54 +1,120 @@
+using System.Text;
 using System.Collections.Generic;
 using UnityEngine;
 using static Assertions;
 
-public interface IResourceSystem {
-    T Load<T>(ResourceLink link) where T : Component;
-    void Preload(params ResourceLink[] links);
-    void Unload(ResourceLink link);
-}
-
-[System.Serializable]
-public struct ResourceLink : ISave {
-    public string     Path; // Actual path to the resource
-    public GameObject Reference; // Used as reference to resource in Resources folder, do not use it.
-
-    public void Save(ISaveFile sf) {
-        sf.Write(nameof(Path), Path);
+public class ResourceSystem {
+    public struct LoadedResource {
+        public AssetBundle Bundle;
+        public Object      Reference;
     }
 
-    public void Load(ISaveFile sf) {
-        Path = sf.Read<string>(nameof(Path));
-    }
-}
+    public Dictionary<string, LoadedResource> Links = new();
+    public Dictionary<string, AssetBundle>    LoadedBundles = new();
 
-public class ResourceSystem : IResourceSystem {
-    public Dictionary<string, GameObject> Links = new();
+    private readonly string Path = $"{Application.streamingAssetsPath}/AssetBundles";
 
-    public T Load<T>(ResourceLink link) 
-    where T : Component {
-        if(Links.ContainsKey(link.Path)) {
-            return Links[link.Path].GetComponent<T>();
-        }
+    private readonly StringBuilder _sb = new();
 
-        var asset = Resources.Load<T>(link.Path);
-        Links.Add(link.Path, asset.gameObject);
+    public T Load<T>(string name)
+    where T : Object {
+        if(Links.ContainsKey(name)) {
+            var resource = Links[name];
+            if(resource.Reference) {
+                if(resource.Reference is GameObject gameObject) {
+                    return gameObject.GetComponent<T>();
+                } else {
+                    return (T)resource.Reference;
+                }
+            }
 
-        return asset;
-    }
+            var asset = resource.Bundle.LoadAsset(name);
 
-    public void Preload(params ResourceLink[] links) {
-        for(var i = 0; i < links.Length; ++i) {
-            Assert(Links.ContainsKey(links[i].Path) == false, $"Trying to preload already loaded asset, duplicate path is: {links[i].Path}");
+            resource.Reference = asset;
 
-            var asset = Resources.Load<GameObject>(links[i].Path);
-            Links.Add(links[i].Path, asset);
+            Links[name] = resource;
+
+            if(asset is GameObject go) {
+                return go.GetComponent<T>();
+            } else {
+                return (T)asset;
+            }
+        } else {
+            Debug.LogError($"Cannot load resource with name {name}. Did you load the corresponding bundle?");
+            return null;
         }
     }
 
-    public void Unload(ResourceLink link) {
-        Assert(Links.ContainsKey(link.Path), $"Resource at path {link.Path} is not loaded, can't unload it");
+    public void LoadBundle(string name) {
+        if(LoadedBundles.ContainsKey(name)) {
+            Debug.LogError($"Bundle with name {name} is already loaded.");
+            return;
+        }
 
-        Links.Remove(link.Path);
+        var path   = $"{Path}/{name}";
+        var bundle = AssetBundle.LoadFromFile(path);
+
+        if(!bundle) {
+            Debug.LogError($"Cannot load bundle with name {name}. Did you build your bundles, using \"Asset Bundles/Build Bundles\" button?");
+            return;
+        }
+
+        LoadedBundles[name] = bundle;
+
+        var assets = bundle.GetAllAssetNames();
+
+        for(var i = 0; i < assets.Length; ++i) {
+            var assetName = AssetNameFromPath(assets[i], assets[i].Length);
+
+            if(Links.ContainsKey(assetName)) {
+                if(Links[assetName].Reference) {
+                    Object.Destroy(Links[assetName].Reference);
+                }
+            }
+
+            Links[assetName] = new LoadedResource() {
+                Bundle    = bundle,
+                Reference = null
+            };
+        }
+    }
+
+    public void UnloadBundle(string name) {
+        if(LoadedBundles.ContainsKey(name) == false) {
+            Debug.Log($"Bundle with name {name} is not loaded");
+            return;
+        }
+
+        LoadedBundles[name].Unload(true);
+        LoadedBundles.Remove(name);
+    }
+
+    private string AssetNameFromPath(string path, int len) {
+        _sb.Clear();
+        for(var i = 0; i < len; ++i) {
+            switch(path[i]) {
+                case '/' : {
+                    _sb.Clear();
+                } break;
+
+                case '\\' : {
+                    _sb.Clear();
+                } break;
+
+                case '.' : {
+                    var str = _sb.ToString();
+                    _sb.Clear();
+                    return str;
+                }
+
+                default : {
+                    _sb.Append(path[i]);
+                } break;
+            }
+        }
+
+        _sb.Clear();
+
+        return "";
     }
 }

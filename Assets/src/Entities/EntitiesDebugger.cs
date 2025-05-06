@@ -7,7 +7,7 @@ using static ArrayUtils;
 
 public class EntitiesDebugger : MonoBehaviour {
     private delegate bool ValidateValue<T>(string str, out T value);
-    
+
     public EntityManager EntityManager;
     public Camera        DebugCamera;
     public Camera        PreviousCamera;
@@ -112,7 +112,7 @@ public class EntitiesDebugger : MonoBehaviour {
                 }
 
                 mousez *= RollSensitivity * Time.deltaTime;
-                
+
                 var inputRotation = Quaternion.Euler(mousey, mousex, mousez);
                 currentRotation *= inputRotation;
 
@@ -134,7 +134,7 @@ public class EntitiesDebugger : MonoBehaviour {
 
                 t.position += forward + right + up;
             }
-            
+
         }
     }
 
@@ -162,9 +162,9 @@ public class EntitiesDebugger : MonoBehaviour {
 
             GUI.BeginGroup(entitiesListRect); //Entities List
 
-            GUI.BeginGroup(new Rect(0, 
-                                    currentEntitiesListHeight, 
-                                    screenWidth * EntitiesListWidth, 
+            GUI.BeginGroup(new Rect(0,
+                                    currentEntitiesListHeight,
+                                    screenWidth * EntitiesListWidth,
                                     screenHeight)); // Sorted Entities
 
             for(uint i = 0; i < EntityManager.MaxEntitiesCount; ++i) {
@@ -196,7 +196,7 @@ public class EntitiesDebugger : MonoBehaviour {
             }
 
             for(var i = FirstEntity; i < SortedEntitiesCount; ++i) {
-                if(GUI.Button(new Rect(0, currentEntitiesListHeight, entityWidth, entityHeight), 
+                if(GUI.Button(new Rect(0, currentEntitiesListHeight, entityWidth, entityHeight),
                               $"{EntityManager.Entities[SortedEntities[i]].Type}")) {
                     SelectedEntity = SortedEntities[i];
                 }
@@ -226,9 +226,9 @@ public class EntitiesDebugger : MonoBehaviour {
                                                BindingFlags.Public   |
                                                BindingFlags.NonPublic)).ToArray();
                 uint membersCount = (uint)members.Length;
-                
+
                 var currentFieldHeight = screenHeight * 0.05f;
-                
+
                 if(descriptionRect.Contains(mousePosition)) {
                     var mouseDelta = Math.Sign(Input.mouseScrollDelta.y) * ItemsPerScroll;
                     var firstField = FirstField - mouseDelta;
@@ -247,14 +247,14 @@ public class EntitiesDebugger : MonoBehaviour {
                     if (member.GetCustomAttributes<HideInInspector>().Any()) {
                         continue;
                     }
-                    
+
                     if(IsUnityField(member))
                         continue;
 
-                    DisplayMember(member, 
-                                  entity, 
-                                  ref currentFieldHeight, 
-                                  fieldWidth, 
+                    DisplayMember(member,
+                                  entity,
+                                  ref currentFieldHeight,
+                                  fieldWidth,
                                   fieldHeight,
                                   additionalFieldOffset,
                                   additionalFieldHeight);
@@ -263,11 +263,11 @@ public class EntitiesDebugger : MonoBehaviour {
                     if (currentFieldHeight > screenHeight)
                         break;
                 }
-                
+
                 var enumOffset = screenWidth * EnumElementsOffset;
                 var enumElementHeight = screenHeight * EnumElementHeight;
                 var enumElementWidth  = screenWidth * EnumElementWidth;
-                
+
                 if(CurrentlyDrawingEnum != null && EnumDrawnThisFrame == false) {
                     var intType = Enum.GetUnderlyingType(CurrentEnumType).ToString();
 
@@ -350,7 +350,7 @@ public class EntitiesDebugger : MonoBehaviour {
                         }
                         break;
                     }
-                    
+
                     EnumDrawnThisFrame = true;
                 }
 
@@ -371,10 +371,10 @@ public class EntitiesDebugger : MonoBehaviour {
         SortedEntitiesCount = 0;
     }
 
-    private void DisplayMember(MemberInfo member, 
-                               Entity entity, 
-                               ref float currentHeight, 
-                               float width, 
+    private void DisplayMember(MemberInfo member,
+                               Entity entity,
+                               ref float currentHeight,
+                               float width,
                                float height,
                                float additionalFieldOffset,
                                float additionalFieldHeight) {
@@ -388,7 +388,7 @@ public class EntitiesDebugger : MonoBehaviour {
         var enumWidth         = Screen.width * EnumWidth;
         var enumElementHeight = Screen.height * EnumElementHeight;
         var enumElementWidth  = Screen.width * EnumElementWidth;
-        
+
         GUI.Label(new Rect(0, currentHeight, width, height), member.Name);
 
         var (memberObject, memberType) = GetMemberObject(member, entity);
@@ -428,7 +428,7 @@ public class EntitiesDebugger : MonoBehaviour {
                      currentHeight,
                      gotoWidth,
                      additionalFieldHeight);
-            
+
             if(GUI.Button(new Rect(selectOffset,
                                    currentHeight,
                                    selectWidth,
@@ -457,22 +457,6 @@ public class EntitiesDebugger : MonoBehaviour {
                          gotoWidth,
                          additionalFieldHeight);
             }
-        } else if (memberType == typeof(ResourceLink)) {
-            var link = (ResourceLink)memberObject;
-
-#if UNITY_EDITOR
-            if(GUI.Button(new Rect(enumOffset,
-                                currentHeight,
-                                width,
-                                height), link.Path)) {
-                Selection.activeObject = AssetDatabase.LoadMainAssetAtPath($"Assets/Resources/{link.Path}.prefab");
-            }
-#else
-            GUI.Label(new Rect(enumOffset,
-                               currentHeight,
-                               width,
-                               height), link.Path);
-#endif
         }
 
         switch (memberTypeName) {
@@ -506,7 +490,7 @@ public class EntitiesDebugger : MonoBehaviour {
                                             offset,
                                             singleValueWidth,
                                             additionalFieldHeight);
-                
+
                 offset -= additionalFieldOffset;
 
                 //Draw rotation
@@ -545,7 +529,7 @@ public class EntitiesDebugger : MonoBehaviour {
                     t.localScale = scale;
                 }
             }
-            break;    
+            break;
             case "System.Single": {
                 var value = DrawInputValue((float)memberObject,
                                                   ValidateSingle,
@@ -645,7 +629,7 @@ public class EntitiesDebugger : MonoBehaviour {
     private bool ValidateInt(string str, out int value) {
         return int.TryParse(str, out value);
     }
-    
+
     private bool ValidateUInt(string str, out uint value) {
         return uint.TryParse(str, out value);
     }
@@ -653,7 +637,7 @@ public class EntitiesDebugger : MonoBehaviour {
     private bool ValidateLong(string str, out long value) {
         return long.TryParse(str, out value);
     }
-    
+
     private bool ValidateULong(string str, out ulong value) {
         return ulong.TryParse(str, out value);
     }
@@ -705,7 +689,7 @@ public class EntitiesDebugger : MonoBehaviour {
             if (setMethod != null) {
                 ((PropertyInfo)member).SetValue(obj, value);
             }
-        }    
+        }
     }
 
     private Vector3 DrawVector3Input(Vector3 input,
@@ -785,7 +769,7 @@ public class EntitiesDebugger : MonoBehaviour {
         var currentEnumHeight = y;
         var values = Enum.GetValues(memberType);
         var currentValue = (int)memberObject;
-        
+
         GUI.Box(new Rect(x,
                          y,
                          elementWidth,
@@ -797,7 +781,7 @@ public class EntitiesDebugger : MonoBehaviour {
 
         foreach(var value in values) {
             var intValue = (int)value;
-            
+
             if(GUI.Button(new Rect(x,
                                    currentEnumHeight,
                                    elementWidth,
@@ -825,7 +809,7 @@ public class EntitiesDebugger : MonoBehaviour {
         var currentEnumHeight = y;
         var values = Enum.GetValues(memberType);
         var currentValue = (uint)memberObject;
-        
+
         GUI.Box(new Rect(x,
                          y,
                          elementWidth,
@@ -837,7 +821,7 @@ public class EntitiesDebugger : MonoBehaviour {
 
         foreach(var value in values) {
             var intValue = (uint)value;
-            
+
             if(GUI.Button(new Rect(x,
                                    currentEnumHeight,
                                    elementWidth,
@@ -865,7 +849,7 @@ public class EntitiesDebugger : MonoBehaviour {
         var currentEnumHeight = y;
         var values = Enum.GetValues(memberType);
         var currentValue = (long)memberObject;
-        
+
         GUI.Box(new Rect(x,
                          y,
                          elementWidth,
@@ -877,7 +861,7 @@ public class EntitiesDebugger : MonoBehaviour {
 
         foreach(var value in values) {
             var intValue = (long)value;
-            
+
             if(GUI.Button(new Rect(x,
                                    currentEnumHeight,
                                    elementWidth,
@@ -905,7 +889,7 @@ public class EntitiesDebugger : MonoBehaviour {
         var currentEnumHeight = y;
         var values = Enum.GetValues(memberType);
         var currentValue = (ulong)memberObject;
-        
+
         GUI.Box(new Rect(x,
                          y,
                          elementWidth,
@@ -917,7 +901,7 @@ public class EntitiesDebugger : MonoBehaviour {
 
         foreach(var value in values) {
             var intValue = (ulong)value;
-            
+
             if(GUI.Button(new Rect(x,
                                    currentEnumHeight,
                                    elementWidth,
@@ -945,7 +929,7 @@ public class EntitiesDebugger : MonoBehaviour {
         var currentEnumHeight = y;
         var values = Enum.GetValues(memberType);
         var currentValue = (short)memberObject;
-        
+
         GUI.Box(new Rect(x,
                          y,
                          elementWidth,
@@ -957,7 +941,7 @@ public class EntitiesDebugger : MonoBehaviour {
 
         foreach(var value in values) {
             var intValue = (short)value;
-            
+
             if(GUI.Button(new Rect(x,
                                    currentEnumHeight,
                                    elementWidth,
@@ -985,7 +969,7 @@ public class EntitiesDebugger : MonoBehaviour {
         var currentEnumHeight = y;
         var values = Enum.GetValues(memberType);
         var currentValue = (ushort)memberObject;
-        
+
         GUI.Box(new Rect(x,
                          y,
                          elementWidth,
@@ -997,7 +981,7 @@ public class EntitiesDebugger : MonoBehaviour {
 
         foreach(var value in values) {
             var intValue = (ushort)value;
-            
+
             if(GUI.Button(new Rect(x,
                                    currentEnumHeight,
                                    elementWidth,
@@ -1025,7 +1009,7 @@ public class EntitiesDebugger : MonoBehaviour {
         var currentEnumHeight = y;
         var values = Enum.GetValues(memberType);
         var currentValue = (byte)memberObject;
-        
+
         GUI.Box(new Rect(x,
                          y,
                          elementWidth,
@@ -1037,7 +1021,7 @@ public class EntitiesDebugger : MonoBehaviour {
 
         foreach(var value in values) {
             var intValue = (byte)value;
-            
+
             if(GUI.Button(new Rect(x,
                                    currentEnumHeight,
                                    elementWidth,
@@ -1065,7 +1049,7 @@ public class EntitiesDebugger : MonoBehaviour {
         var currentEnumHeight = y;
         var values = Enum.GetValues(memberType);
         var currentValue = (sbyte)memberObject;
-        
+
         GUI.Box(new Rect(x,
                          y,
                          elementWidth,
@@ -1077,7 +1061,7 @@ public class EntitiesDebugger : MonoBehaviour {
 
         foreach(var value in values) {
             var intValue = (sbyte)value;
-            
+
             if(GUI.Button(new Rect(x,
                                    currentEnumHeight,
                                    elementWidth,
@@ -1097,7 +1081,7 @@ public class EntitiesDebugger : MonoBehaviour {
 
     private static (object, Type) GetMemberObject(MemberInfo member, object entity) {
         object memberObject;
-        
+
         if ((member.MemberType & MemberTypes.Field) == MemberTypes.Field) {
             memberObject = ((FieldInfo)member).GetValue(entity);
         }
