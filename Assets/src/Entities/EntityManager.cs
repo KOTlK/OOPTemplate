@@ -2,8 +2,10 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+
 using static ArrayUtils;
 using static Assertions;
+using static ResourceSystem;
 
 public struct MovedEntity {
     public uint     Id;
@@ -193,7 +195,7 @@ public class EntityManager : MonoBehaviour, ISave {
     public Entity CreateEntityReturnReference(string     name,
                                               Vector3    position,
                                               Quaternion orientation) {
-        var prefab = Singleton<ResourceSystem>.Instance.Load<Entity>(name);
+        var prefab = LoadAsset<Entity>(name);
         var (_, reference) = CreateEntity(prefab,
                                           position,
                                           orientation,
@@ -208,7 +210,7 @@ public class EntityManager : MonoBehaviour, ISave {
                                               Vector3    position,
                                               Quaternion orientation,
                                               Transform  parent) {
-        var prefab = Singleton<ResourceSystem>.Instance.Load<Entity>(name);
+        var prefab = LoadAsset<Entity>(name);
         var (_, reference) = CreateEntity(prefab,
                                           position,
                                           orientation,
@@ -222,7 +224,7 @@ public class EntityManager : MonoBehaviour, ISave {
     public EntityHandle CreateEntity(string     name,
                                      Vector3    position,
                                      Quaternion orientation) {
-        var prefab = Singleton<ResourceSystem>.Instance.Load<Entity>(name);
+        var prefab = LoadAsset<Entity>(name);
         var (handle, _) = CreateEntity(prefab,
                                        position,
                                        orientation,
@@ -237,7 +239,7 @@ public class EntityManager : MonoBehaviour, ISave {
                                      Vector3    position,
                                      Quaternion orientation,
                                      Transform  parent) {
-        var prefab = Singleton<ResourceSystem>.Instance.Load<Entity>(name);
+        var prefab = LoadAsset<Entity>(name);
         var (handle, _) = CreateEntity(prefab,
                                        position,
                                        orientation,
@@ -320,7 +322,7 @@ public class EntityManager : MonoBehaviour, ISave {
                                  Vector3     scale,
                                  EntityType  type,
                                  EntityFlags flags) {
-        var resource = Singleton<ResourceSystem>.Instance.Load<Entity>(name);
+        var resource = LoadAsset<Entity>(name);
         var e        = Instantiate(resource, position, orientation);
         e.transform.localScale = scale;
 

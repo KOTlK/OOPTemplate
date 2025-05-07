@@ -1,63 +1,55 @@
 using System.Text;
 using System.Collections.Generic;
 using UnityEngine;
+
 using static Assertions;
 
-public class ResourceSystem {
+public static class ResourceSystem {
     public struct LoadedResource {
         public AssetBundle Bundle;
         public Object      Reference;
     }
 
-    public Dictionary<string, LoadedResource> Links = new();
-    public Dictionary<string, AssetBundle>    LoadedBundles = new();
+    public static Dictionary<string, LoadedResource> Links = new();
+    public static Dictionary<string, AssetBundle>    LoadedBundles = new();
 
-    private readonly string Path = $"{Application.streamingAssetsPath}/AssetBundles";
+    private static readonly string Path = $"{Application.streamingAssetsPath}/AssetBundles";
 
-    private readonly StringBuilder _sb = new();
+    private static readonly StringBuilder _sb = new();
 
-    public T Load<T>(string name)
+    public static T LoadAsset<T>(string name)
     where T : Object {
-        if(Links.ContainsKey(name)) {
-            var resource = Links[name];
-            if(resource.Reference) {
-                if(resource.Reference is GameObject gameObject) {
-                    return gameObject.GetComponent<T>();
-                } else {
-                    return (T)resource.Reference;
-                }
-            }
+        Assert(Links.ContainsKey(name), $"Cannot load resource with name {name}. Did you load the corresponding bundle?");
 
-            var asset = resource.Bundle.LoadAsset(name);
-
-            resource.Reference = asset;
-
-            Links[name] = resource;
-
-            if(asset is GameObject go) {
-                return go.GetComponent<T>();
+        var resource = Links[name];
+        if(resource.Reference) {
+            if(resource.Reference is GameObject gameObject) {
+                return gameObject.GetComponent<T>();
             } else {
-                return (T)asset;
+                return (T)resource.Reference;
             }
+        }
+
+        var asset = resource.Bundle.LoadAsset(name);
+
+        resource.Reference = asset;
+
+        Links[name] = resource;
+
+        if(asset is GameObject go) {
+            return go.GetComponent<T>();
         } else {
-            Debug.LogError($"Cannot load resource with name {name}. Did you load the corresponding bundle?");
-            return null;
+            return (T)asset;
         }
     }
 
-    public void LoadBundle(string name) {
-        if(LoadedBundles.ContainsKey(name)) {
-            Debug.LogError($"Bundle with name {name} is already loaded.");
-            return;
-        }
+    public static void LoadBundle(string name) {
+        Assert(LoadedBundles.ContainsKey(name) == false, $"Bundle with name {name} is already loaded.");
 
         var path   = $"{Path}/{name}";
         var bundle = AssetBundle.LoadFromFile(path);
 
-        if(!bundle) {
-            Debug.LogError($"Cannot load bundle with name {name}. Did you build your bundles, using \"Asset Bundles/Build Bundles\" button?");
-            return;
-        }
+        Assert(bundle != null, $"Cannot load bundle with name {name}. Did you build your bundles, using \"Asset Bundles/Build Bundles\" button?");
 
         LoadedBundles[name] = bundle;
 
@@ -79,17 +71,23 @@ public class ResourceSystem {
         }
     }
 
-    public void UnloadBundle(string name) {
-        if(LoadedBundles.ContainsKey(name) == false) {
-            Debug.Log($"Bundle with name {name} is not loaded");
-            return;
-        }
+    public static void UnloadBundle(string name) {
+        Assert(LoadedBundles.ContainsKey(name), $"Bundle with name {name} is not loaded");
 
         LoadedBundles[name].Unload(true);
         LoadedBundles.Remove(name);
     }
 
-    private string AssetNameFromPath(string path, int len) {
+    public static void UnloadAll() {
+        Links.Clear();
+        foreach(var (name, bundle) in LoadedBundles) {
+            bundle.Unload(true);
+        }
+
+        LoadedBundles.Clear();
+    }
+
+    private static string AssetNameFromPath(string path, int len) {
         _sb.Clear();
         for(var i = 0; i < len; ++i) {
             switch(path[i]) {
