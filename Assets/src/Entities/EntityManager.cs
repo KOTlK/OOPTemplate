@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 
 using static ArrayUtils;
 using static Assertions;
-using static ResourceSystem;
+using static Assets;
 
 public struct MovedEntity {
     public uint     Id;
@@ -195,11 +195,9 @@ public class EntityManager : MonoBehaviour, ISave {
     public Entity CreateEntityReturnReference(string     name,
                                               Vector3    position,
                                               Quaternion orientation) {
-        var prefab = LoadAsset<Entity>(name);
-        var (_, reference) = CreateEntity(prefab,
+        var (_, reference) = CreateEntity(name,
                                           position,
                                           orientation,
-                                          prefab.transform.localScale,
                                           null);
 
         return reference;
@@ -210,11 +208,9 @@ public class EntityManager : MonoBehaviour, ISave {
                                               Vector3    position,
                                               Quaternion orientation,
                                               Transform  parent) {
-        var prefab = LoadAsset<Entity>(name);
-        var (_, reference) = CreateEntity(prefab,
+        var (_, reference) = CreateEntity(name,
                                           position,
                                           orientation,
-                                          prefab.transform.localScale,
                                           parent);
 
         return reference;
@@ -224,36 +220,18 @@ public class EntityManager : MonoBehaviour, ISave {
     public EntityHandle CreateEntity(string     name,
                                      Vector3    position,
                                      Quaternion orientation) {
-        var prefab = LoadAsset<Entity>(name);
-        var (handle, _) = CreateEntity(prefab,
+        var (handle, _) = CreateEntity(name,
                                        position,
                                        orientation,
-                                       prefab.transform.localScale,
                                        null);
 
         return handle;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public EntityHandle CreateEntity(string     name,
-                                     Vector3    position,
-                                     Quaternion orientation,
-                                     Transform  parent) {
-        var prefab = LoadAsset<Entity>(name);
-        var (handle, _) = CreateEntity(prefab,
-                                       position,
-                                       orientation,
-                                       prefab.transform.localScale,
-                                       parent);
-
-        return handle;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public (EntityHandle, Entity) CreateEntity(Entity     prefab,
+    public (EntityHandle, Entity) CreateEntity(string     prefab,
                                                Vector3    position,
                                                Quaternion orientation,
-                                               Vector3    localScale,
                                                Transform  parent) {
         uint id;
 
@@ -270,8 +248,7 @@ public class EntityManager : MonoBehaviour, ISave {
             Tag = tag
         };
 
-        var obj = Instantiate(prefab, position, orientation, parent);
-        obj.transform.localScale = localScale;
+        var obj = Assets.Instantiate<Entity>(prefab, position, orientation, parent);
 
         if(MaxEntitiesCount == Entities.Length) {
             Resize(ref Entities, MaxEntitiesCount << 1);
@@ -322,8 +299,7 @@ public class EntityManager : MonoBehaviour, ISave {
                                  Vector3     scale,
                                  EntityType  type,
                                  EntityFlags flags) {
-        var resource = LoadAsset<Entity>(name);
-        var e        = Instantiate(resource, position, orientation);
+        var e = Assets.Instantiate<Entity>(name, position, orientation);
         e.transform.localScale = scale;
 
         uint id = MaxEntitiesCount++;

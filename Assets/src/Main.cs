@@ -18,11 +18,13 @@ public class Main : MonoBehaviour {
         Singleton<SaveSystem>.Create(SaveSystem);
         Singleton<EntityManager>.Create(EntityManager);
         Singleton<TaskRunner>.Create(TaskRunner);
+
+        Assets.InitializeAssets();
     }
 
     private void OnDestroy() {
         SaveSystem.Dispose();
-        ResourceSystem.UnloadAll();
+        Assets.FreeAssets();
     }
 
     private void Start() {
