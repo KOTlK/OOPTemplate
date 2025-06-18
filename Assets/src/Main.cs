@@ -10,7 +10,7 @@ public class Main : MonoBehaviour {
     public SaveSystem     SaveSystem;
 
     private void Awake() {
-        Vars.ParseVars(VarsAsset);
+        Config.ParseVars();
         TaskRunner     = new TaskRunner();
         SaveSystem     = new SaveSystem();
         Events.Init();
