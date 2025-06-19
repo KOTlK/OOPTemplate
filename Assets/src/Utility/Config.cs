@@ -30,7 +30,7 @@ public enum ConfigTokenType : ushort {
     RSqbracket = ']',
     Value      = 257,
     Ident      = 258,
-    Text       = 259, // @Incomplete: add support for text parsing
+    // There are no tokens for text or vectors, it's all just value
 }
 
 public struct ConfigToken {
@@ -125,6 +125,7 @@ public static class Config {
             }
         }
 
+        // If the category was set, apply changes
         if(currentCategory != null) {
             foreach(var field in thisFields) {
                 if(field.FieldType.ToString() == currentCategoryName) {
@@ -151,8 +152,107 @@ public static class Config {
             case "System.Single" : {
                 field.SetValue(instance, Single.Parse(value));
             } break;
+            case "System.Double" : {
+                field.SetValue(instance, Double.Parse(value));
+            } break;
             case "System.Int32" : {
                 field.SetValue(instance, Int32.Parse(value));
+            } break;
+            case "System.UInt32" : {
+                field.SetValue(instance, UInt32.Parse(value));
+            } break;
+            case "System.Int64" : {
+                field.SetValue(instance, Int64.Parse(value));
+            } break;
+            case "System.UInt64" : {
+                field.SetValue(instance, UInt64.Parse(value));
+            } break;
+            case "System.Int16" : {
+                field.SetValue(instance, Int16.Parse(value));
+            } break;
+            case "System.UInt16" : {
+                field.SetValue(instance, UInt16.Parse(value));
+            } break;
+            case "System.SByte" : {
+                field.SetValue(instance, SByte.Parse(value));
+            } break;
+            case "System.Byte" : {
+                field.SetValue(instance, Byte.Parse(value));
+            } break;
+            case "UnityEngine.Vector2" : {
+                var vec   = Vector2.zero;
+                var coord = 0;
+
+                sb.Clear();
+                for(var i = 0; i < value.Length; ++i) {
+                    switch(value[i]) {
+                        case ' ' : break;
+                        case '(' : break;
+                        case ',' : {
+                            vec[coord++] = float.Parse(sb.ToString());
+                            sb.Clear();
+                        } break;
+                        case ')' : {
+                            vec[coord] = float.Parse(sb.ToString());
+                            sb.Clear();
+                        } break;
+                        default : {
+                            sb.Append(value[i]);
+                        } break;
+                    }
+                }
+
+                field.SetValue(instance, vec);
+            } break;
+            case "UnityEngine.Vector3" : {
+                var vec   = Vector3.zero;
+                var coord = 0;
+
+                sb.Clear();
+                for(var i = 0; i < value.Length; ++i) {
+                    switch(value[i]) {
+                        case ' ' : break;
+                        case '(' : break;
+                        case ',' : {
+                            vec[coord++] = float.Parse(sb.ToString());
+                            sb.Clear();
+                        } break;
+                        case ')' : {
+                            vec[coord] = float.Parse(sb.ToString());
+                            sb.Clear();
+                        } break;
+                        default : {
+                            sb.Append(value[i]);
+                        } break;
+                    }
+                }
+
+                field.SetValue(instance, vec);
+            } break;
+            case "UnityEngine.Vector4" : {
+                var vec   = Vector4.zero;
+                var coord = 0;
+
+                sb.Clear();
+                for(var i = 0; i < value.Length; ++i) {
+                    switch(value[i]) {
+                        case ' ' : break;
+                        case '(' : break;
+                        case ',' : {
+                            vec[coord++] = float.Parse(sb.ToString());
+                            sb.Clear();
+                        } break;
+                        case ')' : {
+                            vec[coord] = float.Parse(sb.ToString());
+                            sb.Clear();
+                        } break;
+                        default : {
+                            sb.Append(value[i]);
+                        } break;
+                    }
+                }
+
+                field.SetValue(instance, vec);
             } break;
             default :
                 Debug.LogError($"Cannot set field with type: {field.FieldType.ToString()}");
@@ -173,6 +273,34 @@ public static class Config {
 
             switch(c) {
                 case '\r' : break;
+                case '"'  : {
+                    i++;
+
+                    for (; i < len; ++i) {
+                        if (text[i] == '"' && text[i-1] != '\\') {
+                            break;
+                        }
+
+                        if (text[i] == '\\' &&
+                            text[i + 1] == 'n') {
+                            sb.Append('\n');
+                            i++;
+                            continue;
+                        }
+
+                        sb.Append(text[i]);
+                    }
+                } break;
+                case '(' : {
+                    for(; i < len; ++i) {
+                        if(text[i] == ')') {
+                            sb.Append(text[i]);
+                            break;
+                        }
+
+                        sb.Append(text[i]);
+                    }
+                } break;
                 case '\n' : {
                     var last = Tokens[Tokens.Count - 1];
                     if(last.Type == ConfigTokenType.Comment ||
@@ -242,7 +370,6 @@ public static class Config {
                     sb.Append(c);
                 } break;
             }
-
         }
 
         if(sb.Length > 0) {
