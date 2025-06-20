@@ -7,7 +7,7 @@ using System;
 
 using static Assertions;
 
-public class TextSaveFile : SaveFileBase {
+public class TextSaveFile : ISaveFile {
     public struct Field {
         public string Name;
         public string Value;
@@ -38,6 +38,26 @@ public class TextSaveFile : SaveFileBase {
         }
     }
 
+    public enum TokenType : ushort {
+        LParent     = '{',
+        RParent     = '}',
+        LBracket    = '(',
+        RBracket    = ')',
+        Separator   = ':',
+        Ident       = 256,
+        Value       = 257,
+    }
+
+    public struct Token {
+        public TokenType Type;
+        public string    Ident;
+        public string    Value;
+        public int       Line;
+        public int       Column;
+    }
+
+    public List<Token>   Tokens;
+
     public string[]      LoadedLines;
     public int           LinesCount;
     public StringBuilder Sb = new();
@@ -48,60 +68,85 @@ public class TextSaveFile : SaveFileBase {
     public const int Offset = 4;
     public const string Separator = " : ";
 
-    public override void NewFile(uint version) {
+    public void NewFile() {
         Sb.Clear();
-        base.NewFile(version);
-        Sb.AppendLine();
     }
 
-    protected override void LoadFile(string path) {
+    public void Dispose() {}
+
+    public void LoadFromFile(string path) {
+        Assert(File.Exists(path));
         Root = new ObjectNode {
             Fields = new(),
             NestedObjects = new()
         };
 
-        LoadedLines = File.ReadAllLines(path);
-        LinesCount = LoadedLines.Length;
-        ObjectStack.Clear();
+        // LoadedLines = File.ReadAllLines(path);
+        // LinesCount  = LoadedLines.Length;
+        // ObjectStack.Clear();
 
-        var startLine = 0;
+        // var startLine = 0;
 
-        while(startLine < LinesCount) {
-            var line = LoadedLines[startLine].TrimStart().TrimEnd();
-            var separateLine = line.Split(Separator);
-            if(separateLine.Length > 1 && separateLine[1] == "{") {
-                startLine++;
-                SaveObject(separateLine[0], ParseObject(ref startLine, ObjectNode.Create()));
-            } else if(separateLine.Length == 2) {
-                Root.Fields.Add(new Field(separateLine[0], separateLine[1]));
-                startLine++;
-            } else {
-                startLine++;
+        // while(startLine < LinesCount) {
+        //     var line = LoadedLines[startLine].TrimStart().TrimEnd();
+        //     var separateLine = line.Split(Separator);
+        //     if(separateLine.Length > 1 && separateLine[1] == "{") {
+        //         startLine++;
+        //         SaveObject(separateLine[0], ParseObject(ref startLine, ObjectNode.Create()));
+        //     } else if(separateLine.Length == 2) {
+        //         Root.Fields.Add(new Field(separateLine[0], separateLine[1]));
+        //         startLine++;
+        //     } else {
+        //         startLine++;
+        //     }
+        // }
+
+        // ObjectStack.Push(Root);
+
+        var text = File.ReadAllText(path);
+
+        Tokens = Tokenize(text);
+
+        Root = ObjectNode.Create();
+
+        for (var i = 0; i < Tokens.Count; ++i) {
+            var token = Tokens[i];
+
+            switch(token.Type) {
+                case TokenType.Value : {
+                    var field = ParseField(i);
+
+                    Root.PushField(field);
+                } break;
+                case TokenType.LParent : {
+                    var obj = ParseObject(ref i, out var name);
+
+                    Root.PushObject(name, obj);
+                } break;
+                default : {
+                } break;
             }
         }
-
-        ObjectStack.Push(Root);
     }
 
-    protected override void SaveFile(string path) {
-        File.CreateText(path).Close();
+    public void SaveToFile(string path) {
         File.WriteAllText(path, Sb.ToString());
     }
 
-    public override void Write<T>(T value, string name = null) {
+    public void Write<T>(T value, string name = null) {
         Sb.Append(name);
         AddNameSeparator();
         Sb.Append(Parse(value));
         NextLine();
     }
 
-    public override void WriteObject(ISave save, string name = null) {
+    public void WriteObject(ISave save, string name = null) {
         BeginObject(name);
         save.Save(this);
         EndObject();
     }
 
-    public override void WriteArray<T>(int itemsCount, T[] arr, string name = null) {
+    public void WriteArray<T>(int itemsCount, T[] arr, string name = null) {
         BeginObject(name);
         Write(itemsCount, "Count");
 
@@ -112,7 +157,8 @@ public class TextSaveFile : SaveFileBase {
         EndObject();
     }
 
-    public override void WriteObjectArray<T>(int itemsCount, T[] arr, string name = null) {
+    public void WriteObjectArray<T>(int itemsCount, T[] arr, string name = null)
+    where T : ISave {
         BeginObject(name);
         Write(itemsCount, "Count");
 
@@ -123,7 +169,8 @@ public class TextSaveFile : SaveFileBase {
         EndObject();
     }
 
-    public override void WriteNativeArray<T>(int itemsCount, NativeArray<T> arr, string name = null) {
+    public void WriteNativeArray<T>(int itemsCount, NativeArray<T> arr, string name = null)
+    where T : unmanaged {
         BeginObject(name);
         Write(itemsCount, "Count");
 
@@ -134,7 +181,7 @@ public class TextSaveFile : SaveFileBase {
         EndObject();
     }
 
-    public override void WritePackedEntity(PackedEntity e, uint id, string name = null) {
+    public void WritePackedEntity(PackedEntity e, uint id, string name = null) {
         BeginObject(name);
         Write(id, "Id");
         WriteEnum(e.Type, nameof(e.Type));
@@ -158,7 +205,7 @@ public class TextSaveFile : SaveFileBase {
         EndObject();
     }
 
-    public override void WriteEnum(Enum e, string name = null) {
+    public void WriteEnum(Enum e, string name = null) {
         var type = Enum.GetUnderlyingType(e.GetType()).ToString();
 
         switch(type) {
@@ -201,7 +248,7 @@ public class TextSaveFile : SaveFileBase {
         }
     }
 
-    public override T Read<T>(string name = null, T defaultValue = default(T)) {
+    public T Read<T>(string name = null, T defaultValue = default(T)) {
         foreach(var field in GetCurrentNode().Fields) {
             if(field.Name == name) {
                 return Parse<T>(field.Value);
@@ -211,7 +258,7 @@ public class TextSaveFile : SaveFileBase {
         return defaultValue;
     }
 
-    public override T[] ReadArray<T>(string name = null) {
+    public T[] ReadArray<T>(string name = null) {
         BeginReadObject(name);
         var count = Read<int>("Count");
         var arr   = new T[count];
@@ -225,13 +272,14 @@ public class TextSaveFile : SaveFileBase {
         return arr;
     }
 
-    public override void ReadObject(ISave obj, string name = null) {
+    public void ReadObject(ISave obj, string name = null) {
         BeginReadObject(name);
         obj.Load(this);
         EndReadObject();
     }
 
-    public override T ReadValueType<T>(string name = null) {
+    public T ReadValueType<T>(string name = null)
+    where T : ISave {
         var ret = default(T);
 
         BeginReadObject(name);
@@ -241,7 +289,8 @@ public class TextSaveFile : SaveFileBase {
         return ret;
     }
 
-    public override T ReadEnum<T>(string name) {
+    public T ReadEnum<T>(string name)
+    where T : Enum {
         var type = Enum.GetUnderlyingType(typeof(T)).ToString();
 
         switch(type) {
@@ -286,7 +335,7 @@ public class TextSaveFile : SaveFileBase {
         return default;
     }
 
-    public override PackedEntity ReadPackedEntity(EntityManager em, string name = null) {
+    public PackedEntity ReadPackedEntity(EntityManager em, string name = null) {
         BeginReadObject(name);
         var ent = new PackedEntity();
         var id  = Read<uint>("Id");
@@ -320,7 +369,8 @@ public class TextSaveFile : SaveFileBase {
         return entity;
     }
 
-    public override T[] ReadObjectArray<T>(Func<T> createObjectFunc, string name = null) {
+    public T[] ReadObjectArray<T>(Func<T> createObjectFunc, string name = null)
+    where T : ISave {
         BeginReadObject(name);
         var count = Read<int>("Count");
         var arr   = new T[count];
@@ -336,7 +386,8 @@ public class TextSaveFile : SaveFileBase {
         return arr;
     }
 
-    public override T[] ReadUnmanagedObjectArray<T>(string name = null) {
+    public T[] ReadUnmanagedObjectArray<T>(string name = null)
+    where T : unmanaged, ISave {
         BeginReadObject(name);
         var count = Read<int>("Count");
         var arr   = new T[count];
@@ -350,7 +401,8 @@ public class TextSaveFile : SaveFileBase {
         return arr;
     }
 
-    public override T[] ReadValueObjectArray<T>(string name = null) {
+    public T[] ReadValueObjectArray<T>(string name = null)
+    where T : struct, ISave {
         BeginReadObject(name);
         var count = Read<int>("Count");
         var arr = new T[count];
@@ -364,7 +416,8 @@ public class TextSaveFile : SaveFileBase {
         return arr;
     }
 
-    public override NativeArray<T> ReadNativeObjectArray<T>(Allocator allocator, string name = null) {
+    public NativeArray<T> ReadNativeObjectArray<T>(Allocator allocator, string name = null)
+    where T : unmanaged, ISave {
         BeginReadObject(name);
         var count = Read<int>("Count");
         var arr = new NativeArray<T>(count, allocator);
@@ -378,7 +431,8 @@ public class TextSaveFile : SaveFileBase {
         return arr;
     }
 
-    public override NativeArray<T> ReadNativeArray<T>(Allocator allocator, string name = null) {
+    public NativeArray<T> ReadNativeArray<T>(Allocator allocator, string name = null)
+    where T : unmanaged {
         BeginReadObject(name);
         var count = Read<int>("Count");
         var arr   = new NativeArray<T>(count, allocator);
@@ -713,4 +767,169 @@ public class TextSaveFile : SaveFileBase {
         }
     }
 
+    private List<Token> Tokenize(string text) {
+        var tokens = new List<Token>();
+        var sb     = new StringBuilder();
+        var len    = text.Length;
+        var line   = 0;
+        var col    = 0;
+
+        for (var i = 0; i < len; ++i, col++) {
+            var c = text[i];
+
+            switch(c) {
+                case ' '  : break;
+                case '\r' : break;
+                case '\n' : {
+                    line++;
+                    if(tokens[tokens.Count-1].Type == TokenType.LParent) break;
+                    if(tokens[tokens.Count-1].Type == TokenType.RParent) break;
+
+                    var last = FindLastCharExceptSpace(text, i);
+
+                    if(last == '\n') break;
+
+                    var token = new Token();
+
+                    token.Type   = TokenType.Value;
+                    token.Value  = sb.ToString();
+                    token.Line   = line;
+                    token.Column = col - token.Value.Length - 1;
+
+                    Debug.Log(token.Value);
+                    sb.Clear();
+                    tokens.Add(token);
+                    col = 0;
+                } break;
+                case (char)TokenType.Separator : {
+                    var token = new Token();
+
+                    token.Type  = TokenType.Ident;
+                    token.Ident = sb.ToString();
+                    token.Line   = line;
+                    token.Column = col - token.Ident.Length - 1;
+                    sb.Clear();
+                    tokens.Add(token);
+
+                    token = new();
+
+                    token.Type  = TokenType.Separator;
+                    token.Line   = line;
+                    token.Column = col - 1;
+                    tokens.Add(token);
+                } break;
+                case (char)TokenType.LParent : {
+                    var token = new Token();
+
+                    token.Type   = TokenType.LParent;
+                    token.Line   = line;
+                    token.Column = col - 1;
+                    tokens.Add(token);
+                } break;
+                case (char)TokenType.RParent : {
+                    var token = new Token();
+
+                    token.Type   = TokenType.RParent;
+                    token.Line   = line;
+                    token.Column = col - 1;
+                    tokens.Add(token);
+                } break;
+                case '"' : {
+                    i++;
+                    col++;
+
+                    for ( ; i < len; ++i, ++col) {
+                        if(text[i] == '"' && text[i - 1] != '\\') {
+                            break;
+                        }
+
+                        sb.Append(text[i]);
+                    }
+                } break;
+                case (char)TokenType.LBracket : {
+                    for ( ; i < len; ++i, ++col) {
+                        if(text[i] == (char)TokenType.RBracket) {
+                            sb.Append(text[i]);
+                            break;
+                        }
+
+                        sb.Append(text[i]);
+                    }
+                } break;
+                default : {
+                    sb.Append(c);
+                } break;
+            }
+        }
+
+        return tokens;
+    }
+
+    private char FindLastCharExceptSpace(string text, int i) {
+        i--;
+        for ( ; i >= 0; --i) {
+            if(text[i] != ' ' && text[i] != '\r') return text[i];
+        }
+
+        return ' ';
+    }
+
+    private void UnexpectedToken(TokenType expecting, Token getting) {
+        Debug.LogError($"Unexpected token. Expecting {expecting}, getting {getting.Type} at {getting.Line}:{getting.Column}");
+    }
+
+    private Field ParseField(int valueIndex) {
+        if(Tokens[valueIndex - 1].Type != TokenType.Separator) {
+            UnexpectedToken(TokenType.Separator, Tokens[valueIndex - 1]);
+            return new Field();
+        }
+
+        if(Tokens[valueIndex - 2].Type != TokenType.Ident) {
+            UnexpectedToken(TokenType.Ident, Tokens[valueIndex - 2]);
+            return new Field();
+        }
+
+        return new Field(Tokens[valueIndex - 2].Ident, Tokens[valueIndex].Value);
+    }
+
+    private ObjectNode ParseObject(ref int i, out string name) {
+        var node = ObjectNode.Create();
+
+        if (Tokens[i - 1].Type != TokenType.Separator) {
+            UnexpectedToken(TokenType.Separator, Tokens[i - 1]);
+            name = "";
+            return node;
+        }
+
+        if (Tokens[i - 2].Type != TokenType.Ident) {
+            UnexpectedToken(TokenType.Ident, Tokens[i - 2]);
+            name = "";
+            return node;
+        }
+
+        name = Tokens[i - 2].Ident;
+
+        i++;
+
+        for ( ; i < Tokens.Count; ++i) {
+            var token = Tokens[i];
+
+            if(token.Type == TokenType.RParent) break;
+
+            switch(token.Type) {
+                case TokenType.Value : {
+                    var field = ParseField(i);
+
+                    node.PushField(field);
+                } break;
+                case TokenType.LParent : {
+                    var obj = ParseObject(ref i, out var nm);
+
+                    node.PushObject(nm, obj);
+                } break;
+            }
+        }
+
+        return node;
+    }
 }

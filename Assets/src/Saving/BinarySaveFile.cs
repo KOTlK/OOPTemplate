@@ -5,7 +5,7 @@ using System;
 
 using static Assertions;
 
-public unsafe class BinarySaveFile : SaveFileBase {
+public unsafe class BinarySaveFile : ISaveFile {
     public Arena  Arena = new(50000);
     public byte[] ByteBuffer;
     public byte[] LoadedBytes;
@@ -14,7 +14,7 @@ public unsafe class BinarySaveFile : SaveFileBase {
     public const uint InitialBufferLength = 5000;
     public const uint InitialCurrentBufferLength = 500;
 
-    public override void Dispose() {
+    public void Dispose() {
         ByteBuffer = null;
         Arena.Dispose();
     }
@@ -30,32 +30,31 @@ public unsafe class BinarySaveFile : SaveFileBase {
             ByteBuffer[Pointer + i] = b[i];
         }
 
-        Pointer     += (int)b.Length;
+        Pointer += (int)b.Length;
     }
 
 
-    public override void NewFile(uint version) {
+    public void NewFile() {
         Pointer = 0;
         Arena.Free();
         if(ByteBuffer == null) {
             ByteBuffer = new byte[InitialBufferLength];
         }
-        base.NewFile(version);
     }
 
-    protected override void LoadFile(string path) {
+    public void LoadFromFile(string path) {
         Pointer = 0;
         Arena.Free();
         LoadedBytes = File.ReadAllBytes(path);
     }
 
-    protected override void SaveFile(string path) {
-        using (var stream = new FileStream(path, FileMode.Create, FileAccess.Write)) {
+    public void SaveToFile(string path) {
+        using (var stream = new FileStream(path, FileMode.Open, FileAccess.Write)) {
             stream.Write(ByteBuffer, 0, Pointer);
         }
     }
 
-    public override void Write<T>(T value, string name = null) {
+    public void Write<T>(T value, string name = null) {
         var type  = typeof(T);
 
         if(type == typeof(string)) {
@@ -71,11 +70,11 @@ public unsafe class BinarySaveFile : SaveFileBase {
         }
     }
 
-    public override void WriteObject(ISave save, string name = null) {
+    public void WriteObject(ISave save, string name = null) {
         save.Save(this);
     }
 
-    public override void WriteArray<T>(int itemsCount, T[] arr, string name = null) {
+    public void WriteArray<T>(int itemsCount, T[] arr, string name = null) {
         Write(itemsCount);
 
         for(var i = 0; i < itemsCount; ++i) {
@@ -83,7 +82,8 @@ public unsafe class BinarySaveFile : SaveFileBase {
         }
     }
 
-    public override void WriteObjectArray<T>(int itemsCount, T[] arr, string name = null) {
+    public void WriteObjectArray<T>(int itemsCount, T[] arr, string name = null)
+    where T : ISave {
         Write(itemsCount);
 
         for(var i = 0; i < itemsCount; ++i) {
@@ -91,7 +91,8 @@ public unsafe class BinarySaveFile : SaveFileBase {
         }
     }
 
-    public override void WriteNativeArray<T>(int itemsCount, NativeArray<T> arr, string name = null) {
+    public void WriteNativeArray<T>(int itemsCount, NativeArray<T> arr, string name = null)
+    where T : unmanaged {
         Write(itemsCount);
 
         for(var i = 0; i < itemsCount; ++i) {
@@ -99,7 +100,7 @@ public unsafe class BinarySaveFile : SaveFileBase {
         }
     }
 
-    public override void WritePackedEntity(PackedEntity e, uint id, string name = null) {
+    public void WritePackedEntity(PackedEntity e, uint id, string name = null) {
         Write(id);
         WriteEnum(e.Type);
         Write(e.Alive);
@@ -119,7 +120,7 @@ public unsafe class BinarySaveFile : SaveFileBase {
         e.Save(this);
     }
 
-    public override void WriteEnum(Enum e, string name = null) {
+    public void WriteEnum(Enum e, string name = null) {
         var type = Enum.GetUnderlyingType(e.GetType()).ToString();
 
         switch(type) {
@@ -162,7 +163,7 @@ public unsafe class BinarySaveFile : SaveFileBase {
         }
     }
 
-    public override T Read<T>(string name = null, T defaultValue = default(T)) {
+    public T Read<T>(string name = null, T defaultValue = default(T)) {
         var type = typeof(T);
         if(type == typeof(string)) {
             var len = Parse<int>();
@@ -172,7 +173,7 @@ public unsafe class BinarySaveFile : SaveFileBase {
         }
     }
 
-    public override T[] ReadArray<T>(string name = null) {
+    public T[] ReadArray<T>(string name = null) {
         var count = Read<int>();
         var arr   = new T[count];
 
@@ -183,11 +184,12 @@ public unsafe class BinarySaveFile : SaveFileBase {
         return arr;
     }
 
-    public override void ReadObject(ISave obj, string name = null) {
+    public void ReadObject(ISave obj, string name = null) {
         obj.Load(this);
     }
 
-    public override T ReadValueType<T>(string name = null) {
+    public T ReadValueType<T>(string name = null)
+    where T : ISave {
         var ret = default(T);
 
         ret.Load(this);
@@ -195,7 +197,8 @@ public unsafe class BinarySaveFile : SaveFileBase {
         return ret;
     }
 
-    public override T ReadEnum<T>(string name = null) {
+    public T ReadEnum<T>(string name = null)
+    where T : Enum {
         var type = Enum.GetUnderlyingType(typeof(T)).ToString();
 
         switch(type) {
@@ -240,7 +243,7 @@ public unsafe class BinarySaveFile : SaveFileBase {
         return default;
     }
 
-    public override PackedEntity ReadPackedEntity(EntityManager em, string name = null) {
+    public PackedEntity ReadPackedEntity(EntityManager em, string name = null) {
         var ent = new PackedEntity();
         var id  = Read<uint>();
         ent.Type = ReadEnum<EntityType>(nameof(ent.Type));
@@ -270,7 +273,8 @@ public unsafe class BinarySaveFile : SaveFileBase {
         return entity;
     }
 
-    public override T[] ReadObjectArray<T>(Func<T> createObjectFunc, string name = null) {
+    public T[] ReadObjectArray<T>(Func<T> createObjectFunc, string name = null)
+    where T : ISave {
         var count = Read<int>();
         var arr   = new T[count];
 
@@ -283,7 +287,8 @@ public unsafe class BinarySaveFile : SaveFileBase {
         return arr;
     }
 
-    public override T[] ReadUnmanagedObjectArray<T>(string name = null) {
+    public T[] ReadUnmanagedObjectArray<T>(string name = null)
+    where T : unmanaged, ISave {
         var count = Read<int>();
         var arr   = new T[count];
 
@@ -294,7 +299,8 @@ public unsafe class BinarySaveFile : SaveFileBase {
         return arr;
     }
 
-    public override T[] ReadValueObjectArray<T>(string name = null) {
+    public T[] ReadValueObjectArray<T>(string name = null)
+    where T : struct, ISave {
         var count = Read<int>();
         var arr = new T[count];
 
@@ -305,7 +311,8 @@ public unsafe class BinarySaveFile : SaveFileBase {
         return arr;
     }
 
-    public override NativeArray<T> ReadNativeObjectArray<T>(Allocator allocator, string name = null) {
+    public NativeArray<T> ReadNativeObjectArray<T>(Allocator allocator, string name = null)
+    where T : unmanaged, ISave {
         var count = Read<int>();
         var arr = new NativeArray<T>(count, allocator);
 
@@ -316,7 +323,8 @@ public unsafe class BinarySaveFile : SaveFileBase {
         return arr;
     }
 
-    public override NativeArray<T> ReadNativeArray<T>(Allocator allocator, string name = null) {
+    public NativeArray<T> ReadNativeArray<T>(Allocator allocator, string name = null)
+    where T : unmanaged {
         var count = Read<int>();
         var arr   = new NativeArray<T>(count, allocator);
 
