@@ -64,6 +64,8 @@ public class SaveTest : MonoBehaviour, ISave {
     public TestStruct Struct;
     public TestClass  Class;
 
+    public byte[] Data;
+
     public void Save(ISaveFile sf) {
         sf.Write(IntData, nameof(IntData));
         sf.Write(Quaternion, nameof(Quaternion));
