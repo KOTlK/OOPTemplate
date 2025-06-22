@@ -3,28 +3,32 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
+using static Context;
+
+[Version(19)]
 public class Main : MonoBehaviour {
-    public TextAsset      VarsAsset;
     public EntityManager  EntityManager;
     public TaskRunner     TaskRunner;
-    public SaveSystem     SaveSystem;
 
     private void Awake() {
         Config.ParseVars();
+        InitContext();
         TaskRunner     = new TaskRunner();
-        SaveSystem     = new SaveSystem();
         Events.Init();
 
-        Singleton<SaveSystem>.Create(SaveSystem);
         Singleton<EntityManager>.Create(EntityManager);
         Singleton<TaskRunner>.Create(TaskRunner);
 
         Assets.InitializeAssets();
+        SaveSystem.Init();
+
+        DontDestroyOnLoad(gameObject);
     }
 
     private void OnDestroy() {
         SaveSystem.Dispose();
         Assets.FreeAssets();
+        DestroyContext();
     }
 
     private void Start() {
@@ -32,6 +36,7 @@ public class Main : MonoBehaviour {
     }
 
     private void Update() {
+        SingleFrameArena.Free();
         Clock.Update();
         TaskRunner.RunTaskGroup(TaskGroupType.ExecuteAlways);
         Events.ExecuteAll();

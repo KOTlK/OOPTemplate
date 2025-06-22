@@ -4,37 +4,32 @@ using UnityEngine;
 
 using static Assertions;
 
-public class SaveSystem : IDisposable {
+public static class SaveSystem {
     public enum SaveType {
         Text,
         Binary
     }
 
-    public uint Version = 2;
-    public event Action<ISaveFile> LoadingOver = delegate { };
+    public static uint Version = 2;
+    public static event Action<ISaveFile> LoadingOver = delegate { };
 
-    public SaveType  Type = SaveType.Binary;
-    public ISaveFile Sf;
+    public static SaveType  Type = SaveType.Binary;
+    public static ISaveFile Sf;
 
-    public string Extension = "save";
+    public static string Extension = "save";
 
-    public SaveSystem() {
-        ChangeSaveFileType(SaveType.Binary);
-        TypeVersion.Init(Application.persistentDataPath);
-    }
-
-    public SaveSystem(SaveType type) {
+    public static void Init(SaveType type = SaveType.Binary) {
         ChangeSaveFileType(type);
-        TypeVersion.Init(Application.persistentDataPath);
+        TypeVersion.Init();
     }
 
-    public void Dispose() {
+    public static void Dispose() {
         if(Sf != null) {
             Sf.Dispose();
         }
     }
 
-    public void ChangeSaveFileType(SaveType type) {
+    public static void ChangeSaveFileType(SaveType type) {
         if(Sf != null) {
             Sf.Dispose();
         }
@@ -51,13 +46,14 @@ public class SaveSystem : IDisposable {
         }
     }
 
-    public ISaveFile BeginSave() {
+    public static ISaveFile BeginSave() {
+        TypeVersion.UpdateToCurrent();
         Sf.NewFile();
         Sf.Write(Version, nameof(Version));
         return Sf;
     }
 
-    public void EndSave(string directory, string name) {
+    public static void EndSave(string directory, string name) {
         var path = $"{directory}/{name}.{Extension}";
 
         if(Directory.Exists(directory) == false) {
@@ -73,7 +69,7 @@ public class SaveSystem : IDisposable {
         Sf.SaveToFile(path);
     }
 
-    public ISaveFile BeginLoading(string directory, string fileName) {
+    public static ISaveFile BeginLoading(string directory, string fileName) {
         var path = $"{directory}/{fileName}.{Extension}";
         Assert(SaveExist(directory, fileName), $"File {path} does not exist");
         Sf.LoadFromFile(path);
@@ -81,11 +77,11 @@ public class SaveSystem : IDisposable {
         return Sf;
     }
 
-    public void EndLoading() {
+    public static void EndLoading() {
         LoadingOver(Sf);
     }
 
-    public bool SaveExist(string directory, string fileName) {
+    public static bool SaveExist(string directory, string fileName) {
         if(Directory.Exists(directory)) {
             return File.Exists($"{directory}/{fileName}.{Extension}");
         }

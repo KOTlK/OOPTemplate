@@ -56,20 +56,18 @@ public class TextSaveFile : ISaveFile {
         public int       Column;
     }
 
-    public List<Token>   Tokens;
-
-    public string[]      LoadedLines;
-    public int           LinesCount;
-    public StringBuilder Sb = new();
-    public int           CurrentOffset;
-    public ObjectNode    Root;
+    public StringBuilder     Sb = new();
+    public ObjectNode        Root;
     public Stack<ObjectNode> ObjectStack = new();
-
-    public const int Offset = 4;
-    public const string Separator = " : ";
+    public List<Token>       Tokens;
 
     public void NewFile() {
         Sb.Clear();
+        if(Tokens == null) {
+            Tokens = new();
+        } else {
+            Tokens.Clear();
+        }
     }
 
     public void Dispose() {}
@@ -80,28 +78,6 @@ public class TextSaveFile : ISaveFile {
             Fields = new(),
             NestedObjects = new()
         };
-
-        // LoadedLines = File.ReadAllLines(path);
-        // LinesCount  = LoadedLines.Length;
-        // ObjectStack.Clear();
-
-        // var startLine = 0;
-
-        // while(startLine < LinesCount) {
-        //     var line = LoadedLines[startLine].TrimStart().TrimEnd();
-        //     var separateLine = line.Split(Separator);
-        //     if(separateLine.Length > 1 && separateLine[1] == "{") {
-        //         startLine++;
-        //         SaveObject(separateLine[0], ParseObject(ref startLine, ObjectNode.Create()));
-        //     } else if(separateLine.Length == 2) {
-        //         Root.Fields.Add(new Field(separateLine[0], separateLine[1]));
-        //         startLine++;
-        //     } else {
-        //         startLine++;
-        //     }
-        // }
-
-        // ObjectStack.Push(Root);
 
         var text = File.ReadAllText(path);
 
@@ -130,54 +106,107 @@ public class TextSaveFile : ISaveFile {
     }
 
     public void SaveToFile(string path) {
+        var indent = 0;
+
+        for(var i = 0; i < Tokens.Count; ++i) {
+            var token = Tokens[i];
+
+            switch(token.Type) {
+                case TokenType.Ident :
+                    Sb.Append('\t', indent);
+                    Sb.Append(token.Ident);
+                    Sb.Append(' ');
+                    break;
+                case TokenType.Separator :
+                    Sb.Append((char)TokenType.Separator);
+                    Sb.Append(' ');
+                    break;
+                case TokenType.Value :
+                    Sb.Append(token.Value);
+                    Sb.Append('\n');
+                    break;
+                case TokenType.LParent :
+                    Sb.Append((char)TokenType.LParent);
+                    Sb.Append('\n');
+                    indent++;
+                    break;
+                case TokenType.RParent :
+                    indent--;
+                    Sb.Append('\t', indent);
+                    Sb.Append((char)TokenType.RParent);
+                    Sb.Append('\n');
+                    break;
+            }
+        }
+
         File.WriteAllText(path, Sb.ToString());
     }
 
     public void Write<T>(T value, string name = null) {
-        Sb.Append(name);
-        AddNameSeparator();
-        Sb.Append(Parse(value));
-        NextLine();
+        var token = new Token();
+
+        token.Type  = TokenType.Ident;
+        token.Ident = name;
+
+        Tokens.Add(token);
+
+        token = new();
+
+        token.Type = TokenType.Separator;
+
+        Tokens.Add(token);
+
+        token = new();
+
+        token.Type  = TokenType.Value;
+        token.Value = Parse(value);
+
+        Tokens.Add(token);
     }
 
     public void WriteObject(ISave save, string name = null) {
         BeginObject(name);
+
         save.Save(this);
+
         EndObject();
     }
 
-    public void WriteArray<T>(int itemsCount, T[] arr, string name = null) {
+    public void WriteArray<T>(T[] arr, int itemsCount, string name = null) {
         BeginObject(name);
+
         Write(itemsCount, "Count");
 
         for(var i = 0; i < itemsCount; ++i) {
             Write(arr[i], $"{name}ArrayElement{i}");
-            NextLine();
         }
+
         EndObject();
     }
 
-    public void WriteObjectArray<T>(int itemsCount, T[] arr, string name = null)
+    public void WriteObjectArray<T>(T[] arr, int itemsCount, string name = null)
     where T : ISave {
         BeginObject(name);
+
         Write(itemsCount, "Count");
 
         for(var i = 0; i < itemsCount; ++i) {
             WriteObject(arr[i], $"{name}ArrayElement{i}");
-            NextLine();
         }
+
         EndObject();
     }
 
-    public void WriteNativeArray<T>(int itemsCount, NativeArray<T> arr, string name = null)
+    public void WriteNativeArray<T>(NativeArray<T> arr, int itemsCount, string name = null)
     where T : unmanaged {
         BeginObject(name);
+
         Write(itemsCount, "Count");
 
         for(var i = 0; i < itemsCount; ++i) {
             Write(arr[i], $"{name}ArrayElement{i}");
-            NextLine();
         }
+
         EndObject();
     }
 
@@ -480,56 +509,25 @@ public class TextSaveFile : ISaveFile {
     }
 
     private void BeginObject(string name) {
-        Sb.Append(name);
-        AddNameSeparator();
-        Sb.Append('{');
-        CurrentOffset += Offset;
-        NextLine();
-    }
+        var token = new Token();
 
-    private void NextLine() {
-        Sb.AppendLine();
-        Sb.Append(' ', CurrentOffset);
+        token.Type  = TokenType.Ident;
+        token.Ident = name;
+        Tokens.Add(token);
+
+        token       = new();
+        token.Type  = TokenType.Separator;
+        Tokens.Add(token);
+
+        token       = new();
+        token.Type  = TokenType.LParent;
+        Tokens.Add(token);
     }
 
     private void EndObject() {
-        Sb.AppendLine();
-        CurrentOffset -= Offset;
-        Sb.Append(' ', CurrentOffset);
-        Sb.Append('}');
-        NextLine();
-    }
-
-    private void AddNameSeparator() {
-        Sb.Append(Separator);
-    }
-
-    private ObjectNode ParseObject(ref int startLine, ObjectNode node = default) {
-        while(true) {
-            var line = LoadedLines[startLine].TrimStart().TrimEnd();
-
-            if(string.IsNullOrEmpty(line)) {
-                startLine++;
-                continue;
-            }
-
-            if(line[0] == '}') {
-                startLine++;
-                break;
-            }
-
-            var separateLine = line.Split(Separator);
-
-            if(separateLine[1] == "{") {
-                startLine++;
-                node.PushObject(separateLine[0], ParseObject(ref startLine, ObjectNode.Create()));
-            } else {
-                node.PushField(new Field(separateLine[0], separateLine[1]));
-                startLine++;
-            }
-        }
-
-        return node;
+        var token   = new Token();
+        token.Type  = TokenType.RParent;
+        Tokens.Add(token);
     }
 
     private void SaveObject(string name, ObjectNode node) {
@@ -780,6 +778,7 @@ public class TextSaveFile : ISaveFile {
             switch(c) {
                 case ' '  : break;
                 case '\r' : break;
+                case '\t' : break;
                 case '\n' : {
                     line++;
                     if(tokens[tokens.Count-1].Type == TokenType.LParent) break;
@@ -796,7 +795,6 @@ public class TextSaveFile : ISaveFile {
                     token.Line   = line;
                     token.Column = col - token.Value.Length - 1;
 
-                    Debug.Log(token.Value);
                     sb.Clear();
                     tokens.Add(token);
                     col = 0;
@@ -804,8 +802,8 @@ public class TextSaveFile : ISaveFile {
                 case (char)TokenType.Separator : {
                     var token = new Token();
 
-                    token.Type  = TokenType.Ident;
-                    token.Ident = sb.ToString();
+                    token.Type   = TokenType.Ident;
+                    token.Ident  = sb.ToString();
                     token.Line   = line;
                     token.Column = col - token.Ident.Length - 1;
                     sb.Clear();
@@ -813,7 +811,7 @@ public class TextSaveFile : ISaveFile {
 
                     token = new();
 
-                    token.Type  = TokenType.Separator;
+                    token.Type   = TokenType.Separator;
                     token.Line   = line;
                     token.Column = col - 1;
                     tokens.Add(token);

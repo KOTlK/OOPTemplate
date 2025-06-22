@@ -2,6 +2,9 @@ using UnityEngine;
 
 using static TextSaveFile.TokenType;
 
+namespace TestNamespace {
+
+[Version(12)]
 [System.Serializable]
 public struct TestStruct : ISave {
     public Vector3 VectorData;
@@ -18,6 +21,7 @@ public struct TestStruct : ISave {
     }
 }
 
+[Version(2)]
 [System.Serializable]
 public class TestClass : ISave {
     public int        IntData;
@@ -28,25 +32,32 @@ public class TestClass : ISave {
     public void Save(ISaveFile sf) {
         sf.Write(IntData, nameof(IntData));
         sf.Write(FloatData, nameof(FloatData));
-        sf.Write(Recursive, nameof(Recursive));
 
-        if(Recursive) {
-            sf.WriteObject(Recursion, nameof(Recursion));
+        if(this.GetVersion() > 1) {
+            sf.Write(Recursive, nameof(Recursive));
+
+            if(Recursive) {
+                sf.WriteObject(Recursion, nameof(Recursion));
+            }
         }
     }
 
     public void Load(ISaveFile sf) {
         IntData   = sf.Read<int>(nameof(IntData));
         FloatData = sf.Read<float>(nameof(FloatData));
-        Recursive = sf.Read<bool>(nameof(Recursive));
 
-        if(Recursive) {
-            Recursion = sf.ReadValueType<TestStruct>(nameof(Recursion));
+        if(this.GetVersion() > 1) {
+            Recursive = sf.Read<bool>(nameof(Recursive));
+
+            if(Recursive) {
+                Recursion = sf.ReadValueType<TestStruct>(nameof(Recursion));
+            }
         }
     }
 }
 
 
+[Version(7)]
 public class SaveTest : MonoBehaviour, ISave {
     public int        IntData;
     public Quaternion Quaternion;
@@ -69,27 +80,26 @@ public class SaveTest : MonoBehaviour, ISave {
 
     private void Awake() {
         var path = $"{Application.persistentDataPath}/Saves/TestSave.save";
-        var sf = new TextSaveFile();
+        var sf   = new TextSaveFile();
 
         // sf.NewFile();
         // sf.Write(1, "Version");
-
         // sf.WriteObject(this, "This");
-
         // sf.SaveToFile(path);
 
         sf.LoadFromFile(path);
-
         sf.ReadObject(this, "This");
 
-        foreach (var token in sf.Tokens) {
-            if (token.Type == Value) {
-                Debug.Log($"{token.Type}, {token.Value}");
-            } else if (token.Type == Ident) {
-                Debug.Log($"{token.Type}, {token.Ident}");
-            } else {
-                Debug.Log(token.Type);
-            }
-        }
+        // foreach (var token in sf.Tokens) {
+        //     if (token.Type == Value) {
+        //         Debug.Log($"{token.Type}, {token.Value}");
+        //     } else if (token.Type == Ident) {
+        //         Debug.Log($"{token.Type}, {token.Ident}");
+        //     } else {
+        //         Debug.Log(token.Type);
+        //     }
+        // }
     }
 }
+
+} // namespace

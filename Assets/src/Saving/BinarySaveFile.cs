@@ -4,9 +4,9 @@ using Unity.Collections;
 using System;
 
 using static Assertions;
+using static Context;
 
 public unsafe class BinarySaveFile : ISaveFile {
-    public Arena  Arena = new(50000);
     public byte[] ByteBuffer;
     public byte[] LoadedBytes;
     public int    Pointer = 0;
@@ -16,7 +16,6 @@ public unsafe class BinarySaveFile : ISaveFile {
 
     public void Dispose() {
         ByteBuffer = null;
-        Arena.Dispose();
     }
 
     private void PushBytes(UnmanagedArray<byte> b) {
@@ -36,7 +35,6 @@ public unsafe class BinarySaveFile : ISaveFile {
 
     public void NewFile() {
         Pointer = 0;
-        Arena.Free();
         if(ByteBuffer == null) {
             ByteBuffer = new byte[InitialBufferLength];
         }
@@ -44,7 +42,6 @@ public unsafe class BinarySaveFile : ISaveFile {
 
     public void LoadFromFile(string path) {
         Pointer = 0;
-        Arena.Free();
         LoadedBytes = File.ReadAllBytes(path);
     }
 
@@ -74,7 +71,7 @@ public unsafe class BinarySaveFile : ISaveFile {
         save.Save(this);
     }
 
-    public void WriteArray<T>(int itemsCount, T[] arr, string name = null) {
+    public void WriteArray<T>(T[] arr, int itemsCount, string name = null) {
         Write(itemsCount);
 
         for(var i = 0; i < itemsCount; ++i) {
@@ -82,7 +79,7 @@ public unsafe class BinarySaveFile : ISaveFile {
         }
     }
 
-    public void WriteObjectArray<T>(int itemsCount, T[] arr, string name = null)
+    public void WriteObjectArray<T>(T[] arr, int itemsCount, string name = null)
     where T : ISave {
         Write(itemsCount);
 
@@ -91,7 +88,7 @@ public unsafe class BinarySaveFile : ISaveFile {
         }
     }
 
-    public void WriteNativeArray<T>(int itemsCount, NativeArray<T> arr, string name = null)
+    public void WriteNativeArray<T>(NativeArray<T> arr, int itemsCount, string name = null)
     where T : unmanaged {
         Write(itemsCount);
 
@@ -342,7 +339,7 @@ public unsafe class BinarySaveFile : ISaveFile {
         switch(type) {
             case "System.String" : {
                 var val = (string)(object)value;
-                var ret = Arena.Alloc<byte>(sizeof(char) * (uint)val.Length);
+                var ret = SingleFrameArena.Alloc<byte>(sizeof(char) * (uint)val.Length);
 
                 for(var i = 0; i < val.Length; ++i) {
                     short a = (short)val[i];
@@ -354,7 +351,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "UnityEngine.Vector3" : {
                 var val = (Vector3)(object)value;
-                var ret = Arena.Alloc<byte>((uint)sizeof(Vector3));
+                var ret = SingleFrameArena.Alloc<byte>((uint)sizeof(Vector3));
                 var ptr = (byte*)(&val);
 
                 for(var i = 0; i < 3; ++i) {
@@ -367,7 +364,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "UnityEngine.Vector3Int" : {
                 var val = (Vector3Int)(object)value;
-                var ret = Arena.Alloc<byte>((uint)sizeof(Vector3Int));
+                var ret = SingleFrameArena.Alloc<byte>((uint)sizeof(Vector3Int));
 
                 for(var i = 0; i < 3; ++i) {
                     ret[0 + sizeof(int) * i] = (byte)(val[i] & 0xff);
@@ -380,7 +377,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "UnityEngine.Vector2" : {
                 var val = (Vector2)(object)value;
-                var ret = Arena.Alloc<byte>((uint)sizeof(Vector2));
+                var ret = SingleFrameArena.Alloc<byte>((uint)sizeof(Vector2));
                 var ptr = (byte*)(&val);
 
                 for(var i = 0; i < 2; ++i) {
@@ -393,7 +390,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "UnityEngine.Vector2Int" : {
                 var val = (Vector2Int)(object)value;
-                var ret = Arena.Alloc<byte>((uint)sizeof(Vector2Int));
+                var ret = SingleFrameArena.Alloc<byte>((uint)sizeof(Vector2Int));
 
                 for(var i = 0; i < 2; ++i) {
                     ret[0 + sizeof(int) * i] = (byte)(val[i] & 0xff);
@@ -404,7 +401,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "UnityEngine.Vector4" : {
                 var val = (Vector4)(object)value;
-                var ret = Arena.Alloc<byte>((uint)sizeof(Vector4));
+                var ret = SingleFrameArena.Alloc<byte>((uint)sizeof(Vector4));
                 var ptr = (byte*)(&val);
 
                 for(var i = 0; i < 4; ++i) {
@@ -417,7 +414,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "UnityEngine.Quaternion" : {
                 var val = (Quaternion)(object)value;
-                var ret = Arena.Alloc<byte>((uint)sizeof(Vector3));
+                var ret = SingleFrameArena.Alloc<byte>((uint)sizeof(Vector3));
                 var euler = val.eulerAngles;
                 var ptr = (byte*)(&euler);
 
@@ -431,7 +428,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "UnityEngine.Matrix4x4" : {
                 var val = (Matrix4x4)(object)value;
-                var ret = Arena.Alloc<byte>((uint)sizeof(Matrix4x4));
+                var ret = SingleFrameArena.Alloc<byte>((uint)sizeof(Matrix4x4));
                 var ptr = (byte*)(&val);
 
                 for(var i = 0; i < 16; ++i) {
@@ -444,7 +441,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "System.Single" : {
                 var val = (float)(object)value;
-                var ret = Arena.Alloc<byte>(sizeof(float));
+                var ret = SingleFrameArena.Alloc<byte>(sizeof(float));
                 var ptr = (byte*)(&val);
 
                 for(var i = 0; i < sizeof(float); ++i) {
@@ -455,7 +452,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "System.Double" : {
                 var val = (double)(object)value;
-                var ret = Arena.Alloc<byte>(sizeof(double));
+                var ret = SingleFrameArena.Alloc<byte>(sizeof(double));
                 var ptr = (byte*)(&val);
 
                 for(var i = 0; i < sizeof(double); ++i) {
@@ -466,7 +463,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "System.Int16" : {
                 var val   = (short)(object)value;
-                var ret   = Arena.Alloc<byte>(sizeof(short));
+                var ret   = SingleFrameArena.Alloc<byte>(sizeof(short));
 
                 ret[0] = (byte)(val & 0xff);
                 ret[1] = (byte)((val >> 8) & 0xff);
@@ -475,7 +472,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "System.UInt16" : {
                 var val   = (ushort)(object)value;
-                var ret   = Arena.Alloc<byte>(sizeof(ushort));
+                var ret   = SingleFrameArena.Alloc<byte>(sizeof(ushort));
 
                 ret[0] = (byte)(val & 0xff);
                 ret[1] = (byte)((val >> 8) & 0xff);
@@ -484,7 +481,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "System.Int32" : {
                 var val   = (int)(object)value;
-                var ret   = Arena.Alloc<byte>(sizeof(int));
+                var ret   = SingleFrameArena.Alloc<byte>(sizeof(int));
 
                 ret[0] = (byte)(val & 0xff);
                 ret[1] = (byte)((val >> 8) & 0xff);
@@ -495,7 +492,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "System.UInt32" : {
                 var val   = (uint)(object)value;
-                var ret   = Arena.Alloc<byte>(sizeof(uint));
+                var ret   = SingleFrameArena.Alloc<byte>(sizeof(uint));
 
                 ret[0] = (byte)(val & 0xff);
                 ret[1] = (byte)((val >> 8) & 0xff);
@@ -506,7 +503,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "System.Int64" : {
                 var val   = (long)(object)value;
-                var ret   = Arena.Alloc<byte>(sizeof(long));
+                var ret   = SingleFrameArena.Alloc<byte>(sizeof(long));
 
                 ret[0] = (byte)(val & 0xff);
                 ret[1] = (byte)((val >> 8) & 0xff);
@@ -521,7 +518,7 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "System.UInt64" : {
                 var val   = (ulong)(object)value;
-                var ret   = Arena.Alloc<byte>(sizeof(ulong));
+                var ret   = SingleFrameArena.Alloc<byte>(sizeof(ulong));
 
                 ret[0] = (byte)(val & 0xff);
                 ret[1] = (byte)((val >> 8) & 0xff);
@@ -536,21 +533,21 @@ public unsafe class BinarySaveFile : ISaveFile {
             }
             case "System.Byte" : {
                 var val   = (byte)(object)value;
-                var ret   = Arena.Alloc<byte>(sizeof(byte));
+                var ret   = SingleFrameArena.Alloc<byte>(sizeof(byte));
                 ret[0]    = val;
 
                 return new UnmanagedArray<byte>(ret, sizeof(byte));
             }
             case "System.SByte" : {
                 var val   = (sbyte)(object)value;
-                var ret   = Arena.Alloc<byte>(sizeof(sbyte));
+                var ret   = SingleFrameArena.Alloc<byte>(sizeof(sbyte));
                 ret[0]    = (byte)val;
 
                 return new UnmanagedArray<byte>(ret, sizeof(sbyte));
             }
             case "System.Boolean" : {
                 var val   = (bool)(object)value;
-                var ret   = Arena.Alloc<byte>(sizeof(bool));
+                var ret   = SingleFrameArena.Alloc<byte>(sizeof(bool));
                 var ptr   = (byte*)(&val);
 
                 for(var i = 0; i < sizeof(bool); ++i) {
@@ -568,7 +565,7 @@ public unsafe class BinarySaveFile : ISaveFile {
 
         switch (type) {
             case "System.String" : {
-                var str = Arena.Alloc<char>((uint)stringLength);
+                var str = SingleFrameArena.Alloc<char>((uint)stringLength);
 
                 for(var i = 0; i < stringLength; ++i) {
                     short o = (short)(LoadedBytes[Pointer + 1 + sizeof(short) * i] << 8 |

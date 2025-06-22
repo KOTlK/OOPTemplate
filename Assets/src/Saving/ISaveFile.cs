@@ -7,10 +7,10 @@ public interface ISaveFile : IDisposable {
     void LoadFromFile(string path);
     void Write<T>(T value, string name = null);
     void WriteObject(ISave save, string name = null);
-    void WriteArray<T>(int itemsCount, T[] arr, string name = null);
-    void WriteObjectArray<T>(int itemsCount, T[] arr, string name = null)
+    void WriteArray<T>(T[] arr, int itemsCount, string name = null);
+    void WriteObjectArray<T>(T[] arr, int itemsCount, string name = null)
         where T : ISave;
-    void WriteNativeArray<T>(int itemsCount, NativeArray<T> arr, string name = null)
+    void WriteNativeArray<T>(NativeArray<T> arr, int itemsCount, string name = null)
         where T : unmanaged;
     void WritePackedEntity(PackedEntity e, uint id, string name = null);
     void WriteEnum(Enum e, string name = null);
