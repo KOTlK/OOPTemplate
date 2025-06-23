@@ -64,8 +64,6 @@ public class SaveTest : MonoBehaviour, ISave {
     public TestStruct Struct;
     public TestClass  Class;
 
-    public byte[] Data;
-
     public void Save(ISaveFile sf) {
         sf.Write(IntData, nameof(IntData));
         sf.Write(Quaternion, nameof(Quaternion));
@@ -81,6 +79,15 @@ public class SaveTest : MonoBehaviour, ISave {
     }
 
     private void Awake() {
+        // foreach(var save in SaveSystem.GetAllSaves()) {
+        //     Debug.Log(save);
+        // }
+
+        // SaveSystem.Init(SaveType.Text);
+        // SaveSystem.Save(Saving, "Hello Save");
+
+        // SaveSystem.Load(Loading, "Hello Save-0");
+
         var path = $"{Application.persistentDataPath}/Saves/TestSave.save";
         var sf   = new TextSaveFile();
 
@@ -90,6 +97,7 @@ public class SaveTest : MonoBehaviour, ISave {
         // sf.SaveToFile(path);
 
         sf.LoadFromFile(path);
+        var v = sf.Read<int>("Version");
         sf.ReadObject(this, "This");
 
         // foreach (var token in sf.Tokens) {
@@ -101,6 +109,14 @@ public class SaveTest : MonoBehaviour, ISave {
         //         Debug.Log(token.Type);
         //     }
         // }
+    }
+
+    private void Saving(ISaveFile sf) {
+        sf.WriteObject(this, "This");
+    }
+
+    private void Loading(ISaveFile sf) {
+        sf.ReadObject(this, "This");
     }
 }
 

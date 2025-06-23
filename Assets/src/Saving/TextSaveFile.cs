@@ -78,6 +78,7 @@ public class TextSaveFile : ISaveFile {
             Fields = new(),
             NestedObjects = new()
         };
+        ObjectStack.Clear();
 
         var text = File.ReadAllText(path);
 
@@ -103,6 +104,8 @@ public class TextSaveFile : ISaveFile {
                 } break;
             }
         }
+
+        ObjectStack.Push(Root);
     }
 
     public void SaveToFile(string path) {
