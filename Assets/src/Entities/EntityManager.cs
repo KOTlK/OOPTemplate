@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 
 using static ArrayUtils;
 using static Assertions;
-using static Assets;
+using static ResourceManager;
 
 public struct MovedEntity {
     public uint     Id;
@@ -163,8 +163,8 @@ public class EntityManager : MonoBehaviour, ISave {
             }
         }
 
-        entity.OnBaking();
         entity.RegisterInstanceId(this);
+        entity.OnBaking();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -232,7 +232,7 @@ public class EntityManager : MonoBehaviour, ISave {
     public (EntityHandle, Entity) CreateEntity(string     prefab,
                                                Vector3    position,
                                                Quaternion orientation,
-                                               Transform  parent) {
+                                               Transform  parent = null) {
         uint id;
 
         if(FreeEntitiesCount > 0) {
@@ -248,7 +248,7 @@ public class EntityManager : MonoBehaviour, ISave {
             Tag = tag
         };
 
-        var obj = Assets.Instantiate<Entity>(prefab, position, orientation, parent);
+        var obj = ResourceManager.Instantiate<Entity>(prefab, position, orientation, parent);
 
         if(MaxEntitiesCount == Entities.Length) {
             Resize(ref Entities, MaxEntitiesCount << 1);
@@ -299,7 +299,7 @@ public class EntityManager : MonoBehaviour, ISave {
                                  Vector3     scale,
                                  EntityType  type,
                                  EntityFlags flags) {
-        var e = Assets.Instantiate<Entity>(name, position, orientation);
+        var e = ResourceManager.Instantiate<Entity>(name, position, orientation);
         e.transform.localScale = scale;
 
         uint id = MaxEntitiesCount++;

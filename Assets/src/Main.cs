@@ -13,22 +13,22 @@ public class Main : MonoBehaviour {
     private void Awake() {
         Config.ParseVars();
         InitContext();
-        TaskRunner     = new TaskRunner();
+        TaskRunner = new TaskRunner();
         Events.Init();
+        ResourceManager.Initialize();
+        SaveSystem.Init();
 
         Singleton<EntityManager>.Create(EntityManager);
         Singleton<TaskRunner>.Create(TaskRunner);
-
-        Assets.InitializeAssets();
-        SaveSystem.Init();
 
         DontDestroyOnLoad(gameObject);
     }
 
     private void OnDestroy() {
         SaveSystem.Dispose();
-        Assets.FreeAssets();
+        ResourceManager.Free();
         DestroyContext();
+        SaveSystem.Dispose();
     }
 
     private void Start() {
@@ -39,7 +39,6 @@ public class Main : MonoBehaviour {
         SingleFrameArena.Free();
         Clock.Update();
         TaskRunner.RunTaskGroup(TaskGroupType.ExecuteAlways);
-        Events.ExecuteAll();
         EntityManager.Execute();
     }
 
