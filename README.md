@@ -202,3 +202,79 @@ void Start() :
 ```
 
 Async loading of multiple assets work poorly, because Unity somehow manages to trigger onComplete events for AsyncOperation 10-180 seconds after the assets are realy loaded and my implementation depends on this events. So I suggest you not to load multiple assets asynchronously with `LoadAssetsAsync`.
+
+## Localization
+Use `Localization/Editor` button to open localization editor.  
+Inside this editor you can load/save/make new localization entries.  
+The localization entry consist of identifier, tag and text.  
+You can add new tags, by modifying `LocalizationTag` enum inside [Locale](Assets/src/Localization/Locale.cs) file.  
+### Editor overview
+Pressing `New` button will open popup window.  
+In this window, you describe localization entry.  
+- Randomize identifier.
+- Choose tag.
+- Write text.
+- Make comment if needed.
+- Press Save.
+
+New entry will be displayed in Entries list.  
+There you can modify it aswell.  
+Copy button will copy the identifier into the clipboard, you will need it later.  
+In Advanced options, you can change the location of your localization files, name of the current file, save and load the file.  
+The default path of localizations is: `StreamingAssets` directory.
+Using the search field, you can filter entries by identifier, tag or text.
+
+### Locale
+Using [Locale](Assets/src/Localization/Locale.cs) you can load the localization file, by calling `Locale.LoadLocalization(name)`. Name is just the name of file, without the extension.  
+And get string by it's identifier. Use `Locale.Get(ident)` to do it.  
+To help with identifiers, you have [LocalizedString](Assets/src/Localization/LocalizedString.cs).  
+It has custom property drawer. Add it to your class, copy the identifier of your string from editor, by clicking copy button, paste it, and the inspector will show you the string or an error if you made a mistake somewhere. Make sure to load the localization, using `Localization/Load English`.  
+Use `LocalizedString.Get()` and `LocalizedString.Get(int id)` methods to get a string. The first method used, when you need only one string and the second one, when you need multiple strings.  
+You can also subscribe to `Locale.LocalizationLoaded` event to update your text if localization changed.  
+
+Here is working code sample:
+``` C#
+using UnityEngine;
+using TMPro;
+
+public class Dialogue : MonoBehaviour {
+    public LocalizedString String;
+    public TMP_Text        Text;
+    public int             Stage = 0;
+    public int             MaxStage = 5;
+
+    private void Start() {
+        Locale.LocalizationLoaded += UpdateText;
+        UpdateText();
+    }
+
+    private void OnDestroy() {
+        Locale.LocalizationLoaded -= UpdateText;
+    }
+
+    private void Update() {
+        if(Input.GetKeyDown(KeyCode.Space)) {
+            Stage = Mathf.Clamp(Stage + 1, 0, MaxStage - 1);
+            if(Stage < MaxStage) {
+                UpdateText();
+            }
+        }
+
+        if(Input.GetKeyDown(KeyCode.Alpha1)) {
+            Locale.LoadLocalization("eng");
+        }
+
+        if(Input.GetKeyDown(KeyCode.Alpha2)) {
+            Locale.LoadLocalization("ru");
+        }
+    }
+
+    private void UpdateText() {
+        Text.text = String.Get(Stage);
+    }
+}
+```
+
+Inside [Prefabs](Assets/Prefabs/UI) directory located `LocalizedText` file, simple wrapper on TMP_Text, use it if you need.
+
+You can see localization file examples inside `StreamingAssets/Localization` directory.

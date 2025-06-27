@@ -6,7 +6,8 @@ using static Locale;
 using static Locale.TokenType;
 
 public class LocaleTest : MonoBehaviour {
-    public string Localization;
+    public NameIdent IdentName;
+
     public LocalizedString String;
 
     private void Awake() {

@@ -16,4 +16,12 @@ public struct LocalizedString {
     public string Get(int i) {
         return Locale.Get(Idents[i]);
     }
+
+    public LocalizationTag GetTag() {
+        return Locale.GetTag(Ident);
+    }
+
+    public LocalizationTag GetTag(int i) {
+        return Locale.GetTag(Idents[i]);
+    }
 }

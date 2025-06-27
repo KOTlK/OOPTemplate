@@ -150,6 +150,18 @@ public static class Locale {
         return Table[str.Ident].Text;
     }
 
+    public static LocalizationTag GetTag(int hash) {
+        return Table[hash].Tag;
+    }
+
+    public static LocalizationTag GetTag(LocalizedString str) {
+        return Table[str.Ident].Tag;
+    }
+
+    public static LocalizationTag GetTag(NameIdent str) {
+        return Table[str.Ident].Tag;
+    }
+
     public static bool Has(int hash) {
         if(Table != null && Table.ContainsKey(hash)) {
             return true;
