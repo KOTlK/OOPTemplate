@@ -46,57 +46,9 @@ public class LocalizationEditorWindow : EditorWindow {
 
         // Add new
         EditorGUILayout.Space();
-        GUILayout.Label("Add New Entry", EditorStyles.boldLabel);
-
-        EditorGUILayout.BeginHorizontal();
-        if(GUILayout.Button("Random", GUILayout.Width(70))) {
-            NewIdent = Random.Range(int.MinValue, int.MaxValue);
-        }
-        NewIdent = EditorGUILayout.IntField("Identifier", NewIdent);
-        EditorGUILayout.EndHorizontal();
-
-        NewTag     = (LocalizationTag)EditorGUILayout.EnumPopup("Tag", NewTag);
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField("Text", GUILayout.Width(120));
-        NewText = EditorGUILayout.TextArea(NewText, GUILayout.Height(40));
-        EditorGUILayout.EndHorizontal();
-
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField("Comment", GUILayout.Width(120));
-        NewComment = EditorGUILayout.TextArea(NewComment, GUILayout.Height(40));
-        EditorGUILayout.EndHorizontal();
 
         if (GUILayout.Button("New")) {
-            if (!string.IsNullOrEmpty(NewText)) {
-                if (Entries.Exists(e => e.Ident == NewIdent)) {
-                    if (EditorUtility.DisplayDialog("Identifier Exists",
-                        $"Identifier {NewIdent} already exists. Overwrite?",
-                        "Yes", "No")) {
-                        var index = Entries.FindIndex(e => e.Ident == NewIdent);
-                        Entries[index] = new LocaleEntry {
-                            Ident   = NewIdent,
-                            Tag     = NewTag,
-                            Text    = NewText,
-                            Comment = NewComment
-                        };
-                    }
-                }
-                else {
-                    Entries.Add(new LocaleEntry {
-                        Ident   = NewIdent,
-                        Tag     = NewTag,
-                        Text    = NewText,
-                        Comment = NewComment
-                    });
-                }
-
-                NewText    = "";
-                NewComment = "";
-                NewIdent   = Random.Range(int.MinValue, int.MaxValue);
-            }
-            else {
-                EditorUtility.DisplayDialog("Error", "Text cannot be empty", "OK");
-            }
+            NewEntryPopupWindow.ShowPopup(this);
         }
 
         // Entries list
@@ -120,6 +72,9 @@ public class LocalizationEditorWindow : EditorWindow {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("ID", GUILayout.Width(120));
             entry.Ident = EditorGUILayout.IntField(filteredEntries[i].Ident);
+            if(GUILayout.Button("Copy", GUILayout.Width(50))) {
+                EditorGUIUtility.systemCopyBuffer = entry.Ident.ToString();
+            }
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.BeginHorizontal();
@@ -158,7 +113,7 @@ public class LocalizationEditorWindow : EditorWindow {
         if (ShowAdvancedOptions) {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            // Save/Load functionality
+            // Save/Load
             EditorGUILayout.LabelField("Data Management", EditorStyles.boldLabel);
             SaveDirectory = EditorGUILayout.TextField("Save Path", SaveDirectory);
             SaveName      = EditorGUILayout.TextField("Name", SaveName);
@@ -172,7 +127,6 @@ public class LocalizationEditorWindow : EditorWindow {
             }
             EditorGUILayout.EndHorizontal();
 
-            // Bulk operations
             EditorGUILayout.Space();
             if (GUILayout.Button("Clear All Entries")) {
                 if (EditorUtility.DisplayDialog("Confirm Clear",
@@ -202,8 +156,6 @@ public class LocalizationEditorWindow : EditorWindow {
         }
 
         var sb = new StringBuilder();
-
-        // nocheckin implement saving
 
         for(var i = 0; i < Entries.Count; ++i) {
             var entry = Entries[i];
@@ -249,11 +201,9 @@ public class LocalizationEditorWindow : EditorWindow {
     private void LoadData() {
         var path = $"{SaveDirectory}/{SaveName}.{Extension}";
         if(!File.Exists(path)) {
-            if (EditorUtility.DisplayDialog("File does not exist",
-                    $"File at path {path} does not exist!",
-                    "Ok")) {
-                return;
-            }
+            EditorUtility.DisplayDialog("File does not exist",
+                                       $"File at path {path} does not exist!",
+                                       "Ok");
         }
 
         var text   = File.ReadAllText(path);
