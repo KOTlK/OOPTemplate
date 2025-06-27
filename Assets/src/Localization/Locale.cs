@@ -23,6 +23,8 @@ public struct LocaleUnit {
 }
 
 public static class Locale {
+    public static event Action LocalizationLoaded = delegate {};
+
     public enum Error {
         OK                = 0,
         DirectoryNotExist = 1,
@@ -131,11 +133,29 @@ public static class Locale {
             }
         }
 
+        LocalizationLoaded();
+
         return Error.OK;
     }
 
     public static string Get(int hash) {
         return Table[hash].Text;
+    }
+
+    public static string Get(LocalizedString str) {
+        return Table[str.Ident].Text;
+    }
+
+    public static string Get(NameIdent str) {
+        return Table[str.Ident].Text;
+    }
+
+    public static bool Has(int hash) {
+        if(Table != null && Table.ContainsKey(hash)) {
+            return true;
+        }
+
+        return false;
     }
 
     public static Error Tokenize(string text, List<Token> tokens) {
@@ -224,7 +244,7 @@ public static class Locale {
                                 // т.к он объявлен ниже в абсолютно другом скоупе.
                                 // Желаю всем, кто причастен к этому, выпадения прямой кишки.
                                 var tkn = new Token();
-   
+
                                 tkn.Type = TokenType.Tag;
                                 tkn.Tag  = tag;
 

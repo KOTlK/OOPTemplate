@@ -9,9 +9,11 @@ using static Context;
 public class Main : MonoBehaviour {
     public EntityManager  EntityManager;
     public TaskRunner     TaskRunner;
+    public string         Localization = "eng";
 
     private void Awake() {
         Config.ParseVars();
+        Locale.LoadLocalization(Localization);
         InitContext();
         TaskRunner = new TaskRunner();
         Events.Init();

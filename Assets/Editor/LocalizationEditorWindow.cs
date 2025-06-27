@@ -30,9 +30,14 @@ public class LocalizationEditorWindow : EditorWindow {
     private const int IdentSpacesCount = 20;
     private const int TagSpacesCount   = 12;
 
-    [MenuItem("Tools/Localization Editor")]
+    [MenuItem("Localization/Editor")]
     public static void ShowWindow() {
         GetWindow<LocalizationEditorWindow>("Localization Editor");
+    }
+
+    [MenuItem("Localization/Load English")]
+    public static void LoadEnglish() {
+        Locale.LoadLocalization("eng");
     }
 
     private void OnGUI() {

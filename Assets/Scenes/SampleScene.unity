@@ -895,6 +895,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   EntityManager: {fileID: 983788343}
+  Localization: eng
 --- !u!4 &983788345
 Transform:
   m_ObjectHideFlags: 0
@@ -1507,8 +1508,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c38ec94b530dc57488ed651504a2ce59, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  KeySpacesCount: 12
-  StringSpacesCount: 3
+  Localization: ru
+  String:
+    Ident: 0
+    Idents:
+    - Name: 1
+      Ident: 3123213
+    - Name: 2
+      Ident: 5124312
+    - Name: 3
+      Ident: 5234
+    - Name: 4
+      Ident: 981230128
+    - Name: 5
+      Ident: -5234
 --- !u!4 &2134053729
 Transform:
   m_ObjectHideFlags: 0
