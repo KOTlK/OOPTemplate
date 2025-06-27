@@ -5,14 +5,14 @@ using UnityEngine;
 // Generated it with chatgpt, I don't think any sane person would do it manually.
 [CustomPropertyDrawer(typeof(NameIdent))]
 public class NameIdentDrawer : PropertyDrawer {
-    public static readonly Dictionary<string, bool> FoldoutStates = new();
+    private static readonly Dictionary<string, bool> foldoutStates = new();
 
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label) {
         EditorGUI.BeginProperty(position, label, property);
 
         var key = property.propertyPath;
-        if (!FoldoutStates.ContainsKey(key)) {
-            FoldoutStates[key] = false;
+        if (!foldoutStates.ContainsKey(key)) {
+            foldoutStates[key] = false;
         }
 
         var nameProp  = property.FindPropertyRelative("Name");
@@ -20,13 +20,13 @@ public class NameIdentDrawer : PropertyDrawer {
 
         // Foldout rectangle
         var foldoutRect = new Rect(position.x, position.y, position.width, EditorGUIUtility.singleLineHeight);
-        FoldoutStates[key] = EditorGUI.Foldout(foldoutRect, FoldoutStates[key], label, true);
+        foldoutStates[key] = EditorGUI.Foldout(foldoutRect, foldoutStates[key], label, true);
 
-        if (FoldoutStates[key]) {
-            // Calculate heights
-            var lineHeight = EditorGUIUtility.singleLineHeight;
-            var spacing    = EditorGUIUtility.standardVerticalSpacing;
-            var yPos       = position.y + lineHeight + spacing;
+        if (foldoutStates[key]) {
+            // Calculate heights and positions
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            float spacing = EditorGUIUtility.standardVerticalSpacing;
+            float yPos = position.y + lineHeight + spacing;
 
             // Name field
             var nameRect = new Rect(
@@ -37,17 +37,24 @@ public class NameIdentDrawer : PropertyDrawer {
             );
             yPos += lineHeight + spacing;
 
-            // Ident field
-            var identRect = new Rect(
+            // Ident field with paste button
+            float buttonWidth = 50f;
+            var buttonRect = new Rect(
                 position.x + 15,
                 yPos,
-                position.width - 15,
+                buttonWidth,
+                lineHeight
+            );
+            var identRect = new Rect(
+                position.x + 15 + buttonWidth + 5,
+                yPos,
+                position.width - 15 - buttonWidth - 5,
                 lineHeight
             );
             yPos += lineHeight + spacing;
 
             // Localized text field (multiline)
-            var textHeight = CalculateTextHeight(identProp.intValue);
+            float textHeight = CalculateTextHeight(identProp.intValue);
             var valueRect = new Rect(
                 position.x + 15,
                 yPos,
@@ -56,14 +63,24 @@ public class NameIdentDrawer : PropertyDrawer {
             );
 
             EditorGUI.PropertyField(nameRect, nameProp, new GUIContent("Name"));
+
+            // Draw paste button and ident field
+            if (GUI.Button(buttonRect, "Paste")) {
+                string clipboardText = EditorGUIUtility.systemCopyBuffer;
+                if (int.TryParse(clipboardText, out int parsedValue)) {
+                    identProp.intValue = parsedValue;
+                }
+                else {
+                    Debug.LogWarning("Clipboard doesn't contain a valid integer value");
+                }
+            }
             EditorGUI.PropertyField(identRect, identProp, new GUIContent("Identifier"));
 
             if (Locale.Has(identProp.intValue)) {
                 GUI.enabled = false;
                 EditorGUI.TextArea(valueRect, Locale.Get(identProp.intValue));
                 GUI.enabled = true;
-            }
-            else {
+            } else {
                 EditorGUI.HelpBox(valueRect, "No localization found", MessageType.Warning);
             }
         }
@@ -72,12 +89,11 @@ public class NameIdentDrawer : PropertyDrawer {
     }
 
     public override float GetPropertyHeight(SerializedProperty property, GUIContent label) {
-        var key = property.propertyPath;
-
-        if (FoldoutStates.ContainsKey(key) && FoldoutStates[key]) {
-            var baseHeight = (EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing) * 3;
-            var identProp  = property.FindPropertyRelative("Ident");
-            var textHeight = CalculateTextHeight(identProp.intValue);
+        string key = property.propertyPath;
+        if (foldoutStates.ContainsKey(key) && foldoutStates[key]) {
+            float baseHeight = (EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing) * 3;
+            var identProp = property.FindPropertyRelative("Ident");
+            float textHeight = CalculateTextHeight(identProp.intValue);
 
             return baseHeight + textHeight + EditorGUIUtility.standardVerticalSpacing;
         }
@@ -86,17 +102,16 @@ public class NameIdentDrawer : PropertyDrawer {
 
     private float CalculateTextHeight(int ident) {
         if (!Locale.Has(ident)) {
-            return EditorGUIUtility.singleLineHeight; // Height for warning box
+            return EditorGUIUtility.singleLineHeight;
         }
 
-        var text = Locale.Get(ident);
+        string text = Locale.Get(ident);
         if (string.IsNullOrEmpty(text)) {
             return EditorGUIUtility.singleLineHeight;
         }
 
-        // Calculate required height based on text content
-        var style = EditorStyles.textArea;
-        var width = EditorGUIUtility.currentViewWidth - 30; // Account for indentation
+        GUIStyle style = EditorStyles.textArea;
+        float width = EditorGUIUtility.currentViewWidth - 30;
 
         return style.CalcHeight(new GUIContent(text), width);
     }
@@ -116,17 +131,29 @@ public class LocalizedStringDrawer : PropertyDrawer {
         // Calculate rects
         var mainRect = new Rect(position.x, position.y, position.width, EditorGUIUtility.singleLineHeight);
         var foldoutRect = new Rect(position.x, position.y, position.width, EditorGUIUtility.singleLineHeight);
-        var identRect = new Rect(position.x + 20, position.y + EditorGUIUtility.singleLineHeight, position.width - 20, EditorGUIUtility.singleLineHeight);
-        var valueRect = new Rect(position.x, position.y + EditorGUIUtility.singleLineHeight * 2, position.width, EditorGUIUtility.singleLineHeight);
-        var identsRect = new Rect(position.x, position.y + EditorGUIUtility.singleLineHeight * 3, position.width, EditorGUIUtility.singleLineHeight * (identsProp.arraySize + 1));
+        var pasteRect = new Rect(position.x + 20, position.y + EditorGUIUtility.singleLineHeight, 50, EditorGUIUtility.singleLineHeight);
+        var identRect = new Rect(position.x + 75, position.y + EditorGUIUtility.singleLineHeight, position.width - 75, EditorGUIUtility.singleLineHeight);
+        var valueRect = new Rect(position.x + 20, position.y + EditorGUIUtility.singleLineHeight * 2, position.width, EditorGUIUtility.singleLineHeight);
+        var identsRect = new Rect(position.x + 20, position.y + EditorGUIUtility.singleLineHeight * 3, position.width, EditorGUIUtility.singleLineHeight * (identsProp.arraySize + 1));
 
         // Draw foldout
         showIdents = EditorGUI.Foldout(foldoutRect, showIdents, label, true);
 
         if (showIdents) {
             // Draw main ident
-            EditorGUI.PropertyField(identRect, identProp, new GUIContent("Ident"));
 
+            if (GUI.Button(pasteRect, "Paste")) {
+                var clipboardText = EditorGUIUtility.systemCopyBuffer;
+
+                if (int.TryParse(clipboardText, out var parsedValue)) {
+                    identProp.intValue = parsedValue;
+                }
+                else {
+                    Debug.LogWarning("Clipboard doesn't contain a valid integer value");
+                }
+            }
+
+            EditorGUI.PropertyField(identRect, identProp, new GUIContent("Ident"));
             // Draw localized value if available
             if (Locale.Has(identProp.intValue)) {
                 GUI.enabled = false;
@@ -134,7 +161,7 @@ public class LocalizedStringDrawer : PropertyDrawer {
                 GUI.enabled = true;
             }
             else {
-                EditorGUI.HelpBox(valueRect, "No localization found for main ID, Load default with Localization/Load English", MessageType.Warning);
+                EditorGUI.HelpBox(valueRect, "No localization found, Load default with Localization/Load English", MessageType.Warning);
             }
 
             // Draw idents array
