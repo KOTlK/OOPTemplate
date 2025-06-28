@@ -1,11 +1,13 @@
 using System.Text;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Pool;
 
 using Object = UnityEngine.Object;
 using static Assertions;
+using static Coroutines;
 
 [System.Serializable]
 public struct AssetHandle {
@@ -13,7 +15,6 @@ public struct AssetHandle {
 }
 
 public delegate void OnAssetLoad();
-public delegate void OnBundleLoad();
 
 public enum AssetLoadingType : byte {
     SingleAsset,
@@ -25,23 +26,19 @@ public enum AssetLoadingType : byte {
 public class AssetDescription {
     public uint             Hash;
     public AssetLoadingType Type;
-    public OnAssetLoad  OnAssetLoad;
-    public OnBundleLoad OnBundleLoad;
 
-    public AssetDescription       Parent;
     public AsyncOperation         Operation;
-    public List<uint>             Batch;
-    public List<AsyncOperation>   Operations;
+    public List<AssetDescription> LoadList;
 }
 
 public static class ResourceManager {
-    public enum AssetState : byte {
+    public enum AssetStatus : byte {
         Loading,
         Loaded
     }
 
     public struct Asset {
-        public AssetState  State;
+        public AssetStatus Status;
         public string      Name;
         public uint        Hash;
         public AssetBundle Bundle;
@@ -58,8 +55,6 @@ public static class ResourceManager {
     public static uint Count  = 0;
     public static uint Length = 1024;
 
-    private static Dictionary<AsyncOperation, AssetHandle> LoadingAssets;
-
     private static readonly StringBuilder _sb = new();
     private static readonly string Path = $"{Application.streamingAssetsPath}/AssetBundles";
 
@@ -69,9 +64,7 @@ public static class ResourceManager {
         Length = 1024;
         Count  = 0;
         AllAssets     = new Asset[Length];
-        LoadingAssets = new();
         BundleByAssetHash  = new();
-        LoadingAssets.Clear();
         BundleByAssetHash.Clear();
         _sb.Clear();
     }
@@ -82,7 +75,6 @@ public static class ResourceManager {
         Count  = 0;
         AllAssets     = null;
         BundleByAssetHash  = null;
-        LoadingAssets = null;
         _sb.Clear();
     }
 
@@ -134,7 +126,18 @@ public static class ResourceManager {
             };
         }
 
-        return BeginAsyncAssetLoading(name, hash, BundleByAssetHash[hash], onLoad);
+        var bundle    = BundleByAssetHash[hash];
+        var operation = bundle.LoadAssetAsync(name);
+        var desc      = new AssetDescription {
+            Type        = AssetLoadingType.SingleAsset,
+            Operation   = operation
+        };
+
+        var handle = PushLoading(name, desc, operation, bundle);
+
+        BeginCoroutine(LoadSingleAsset(desc, onLoad));
+
+        return handle;
     }
 
     // Load multiple assets asynchronously. The first handle points to the head of the batch.
@@ -147,17 +150,13 @@ public static class ResourceManager {
         Assert(BundleByAssetHash.ContainsKey(hash),
                $"Cannot load the asset {names[0]}, Did you load the bundle, containing it?");
 
-        var id = GetIdIfExist(hash, out var exist);
+        var id         = GetIdIfExist(hash, out var exist);
         var parentDesc = new AssetDescription();
-        var batch      = ListPool<uint>.Get();
-        var ops        = ListPool<AsyncOperation>.Get();
+        var list       = ListPool<AssetDescription>.Get();
 
         parentDesc.Hash        = hash;
         parentDesc.Type        = AssetLoadingType.MultipleAssets;
-        parentDesc.OnAssetLoad = onLoad;
-        parentDesc.Parent      = null;
-        parentDesc.Batch       = batch;
-        parentDesc.Operations  = ops;
+        parentDesc.LoadList    = list;
 
         if(exist) {
             handle.Hash = hash;
@@ -168,7 +167,7 @@ public static class ResourceManager {
 
             parentDesc.Operation = op;
 
-            op.completed += OneOfAssetsLoaded;
+            list.Add(parentDesc);
 
             handle = PushLoading(names[0], parentDesc, op, null);
 
@@ -186,7 +185,6 @@ public static class ResourceManager {
             if(exist) {
                 handle.Hash = hash;
                 res.Add(handle);
-                batch.Add(id);
             } else {
                 var bundle = BundleByAssetHash[hash];
                 var op     = bundle.LoadAssetAsync(names[i]);
@@ -194,17 +192,15 @@ public static class ResourceManager {
 
                 desc.Hash        = hash;
                 desc.Type        = AssetLoadingType.SingleAsset;
-                desc.Parent      = parentDesc;
                 desc.Operation   = op;
-
-                op.completed += OneOfAssetsLoaded;
 
                 handle = PushLoading(names[i], desc, op, null);
                 res.Add(handle);
-                batch.Add(GetId(hash));
-                ops.Add(op);
+                list.Add(desc);
             }
         }
+
+        BeginCoroutine(LoadMultipleAssets(list, onLoad));
 
         return res;
     }
@@ -228,7 +224,7 @@ public static class ResourceManager {
 
         var asset = new Asset();
 
-        asset.State    = AssetState.Loaded;
+        asset.Status    = AssetStatus.Loaded;
         asset.Name     = name;
         asset.Hash     = bundleHash;
         asset.Bundle   = bundle;
@@ -237,42 +233,37 @@ public static class ResourceManager {
         AllAssets[id] = asset;
     }
 
-    public static AssetHandle LoadBundleAsync(string name, OnBundleLoad onLoad) {
+    public static AssetHandle LoadBundleAsync(string name, OnAssetLoad onLoad) {
         Assert(BundleByAssetHash.ContainsKey((uint)name.GetHashCode()) == false, $"Bundle named {name} is already loaded.");
 
         var path = $"{Path}/{name}";
         var op   = AssetBundle.LoadFromFileAsync(path);
         var desc = new AssetDescription {
-            Type         = AssetLoadingType.SingleBundle,
-            OnBundleLoad = onLoad,
-            Operation    = op
+            Type        = AssetLoadingType.SingleBundle,
+            Operation   = op
         };
 
-        op.completed += AsyncBundleLoadingComplete;
-
         var handle = PushLoading(name, desc, op);
+
+        BeginCoroutine(LoadSingleAsset(desc, onLoad));
 
         return handle;
     }
 
-    public static AssetHandle LoadBundlesAsync(OnBundleLoad onLoad, params string[] names) {
+    public static AssetHandle LoadBundlesAsync(OnAssetLoad onLoad, params string[] names) {
         Assert(BundleByAssetHash.ContainsKey((uint)names[0].GetHashCode()) == false, $"Bundle named {names[0]} is already loaded.");
 
         var path   = $"{Path}/{names[0]}";
         var hash   = (uint)(names[0].GetHashCode());
         var op     = AssetBundle.LoadFromFileAsync(path);
-        var ops    = ListPool<AsyncOperation>.Get();
-        var batch  = ListPool<uint>.Get();
+        var list   = ListPool<AssetDescription>.Get();
         var parent = new AssetDescription {
             Type         = AssetLoadingType.MultipleBundles,
-            OnBundleLoad = onLoad,
             Operation    = op,
-            Batch        = batch,
-            Operations   = ops,
-            Parent       = null
+            LoadList     = list
         };
 
-        op.completed += OneOfBundlesLoadingComplete;
+        list.Add(parent);
 
         var handle = PushLoading(names[0], parent, op);
 
@@ -286,16 +277,14 @@ public static class ResourceManager {
             var desc = new AssetDescription {
                 Type         = AssetLoadingType.MultipleBundles,
                 Operation    = op,
-                Parent       = parent
             };
 
             var childHandle = PushLoading(names[i], desc, op);
 
-            op.completed += OneOfBundlesLoadingComplete;
-
-            batch.Add(GetId(hash));
-            ops.Add(op);
+            list.Add(desc);
         }
+
+        BeginCoroutine(LoadMultipleAssets(list, onLoad));
 
         return handle;
     }
@@ -341,7 +330,6 @@ public static class ResourceManager {
         }
 
         BundleByAssetHash.Clear();
-        LoadingAssets.Clear();
         Count = 0;
     }
 
@@ -458,7 +446,7 @@ public static class ResourceManager {
 
     public static float GetLoadingProgress(AssetHandle handle) {
         var id = GetId(handle.Hash);
-        if(AllAssets[id].State == AssetState.Loaded) return 1f;
+        if(AllAssets[id].Status == AssetStatus.Loaded) return 1f;
 
         switch(AllAssets[id].Description.Type) {
             case AssetLoadingType.SingleAsset :
@@ -469,14 +457,14 @@ public static class ResourceManager {
             case AssetLoadingType.MultipleAssets :
             case AssetLoadingType.MultipleBundles : {
                 var desc     = AllAssets[id].Description;
-                var progress = desc.Operation.progress;
-                var count    = desc.Operations.Count;
+                var progress = 0f;
+                var count    = desc.LoadList.Count;
 
                 for(var i = 0; i < count; ++i) {
-                    progress += desc.Operations[i].progress;
+                    progress += desc.LoadList[i].Operation.progress;
                 }
 
-                progress /= count + 1;
+                progress /= count;
 
                 return progress;
             }
@@ -615,104 +603,6 @@ public static class ResourceManager {
         }
     }
 
-    private static AssetHandle BeginAsyncAssetLoading(string name, uint hash, AssetBundle bundle, OnAssetLoad onLoad) {
-        var operation = bundle.LoadAssetAsync(name);
-        var desc      = new AssetDescription {
-            Type        = AssetLoadingType.SingleAsset,
-            OnAssetLoad = onLoad,
-            Operation   = operation
-        };
-
-        var handle = PushLoading(name, desc, operation, bundle);
-
-        operation.completed += AsyncAssetLoadingComplete;
-
-        return handle;
-    }
-
-    private static void AsyncAssetLoadingComplete(AsyncOperation op) {
-        op.completed -= AsyncAssetLoadingComplete;
-        var operation = (AssetBundleRequest)op;
-
-        var loadHandle = LoadingAssets[operation];
-        var id         = GetId(loadHandle.Hash);
-
-        AllAssets[id].State     = AssetState.Loaded;
-        AllAssets[id].Reference = operation.asset;
-
-        AllAssets[id].Description.OnAssetLoad();
-    }
-
-    private static void AsyncBundleLoadingComplete(AsyncOperation op) {
-        op.completed -= AsyncBundleLoadingComplete;
-
-        // WTF???
-        // AsyncOperation->Resource..Operation->AssetBundleCreateRequest braindead
-        var operation = (AssetBundleCreateRequest)op;
-        var handle    = LoadingAssets[operation];
-        var id        = GetId(handle.Hash);
-        var desc      = AllAssets[id].Description;
-        var bundle    = operation.assetBundle;
-        var names     = bundle.GetAllAssetNames();
-
-        foreach(var assetPath in names) {
-            var assetName = AssetNameFromPath(assetPath, assetPath.Length);
-            var assetHash = (uint)assetName.GetHashCode();
-            BundleByAssetHash.Add(assetHash, bundle);
-        }
-
-        AllAssets[id].State  = AssetState.Loaded;
-        AllAssets[id].Bundle = bundle;
-
-        LoadingAssets.Remove(operation);
-
-        desc.OnBundleLoad();
-    }
-
-    private static void OneOfBundlesLoadingComplete(AsyncOperation op) {
-        op.completed -= OneOfBundlesLoadingComplete;
-
-        var operation = (AssetBundleCreateRequest)op;
-        var handle    = LoadingAssets[operation];
-        var id        = GetId(handle.Hash);
-        var desc      = AllAssets[id].Description;
-        var bundle    = operation.assetBundle;
-        var names     = bundle.GetAllAssetNames();
-
-        foreach(var assetPath in names) {
-            var assetName = AssetNameFromPath(assetPath, assetPath.Length);
-            var assetHash = (uint)assetName.GetHashCode();
-
-            BundleByAssetHash.Add(assetHash, bundle);
-        }
-
-        AllAssets[id].Bundle = bundle;
-
-        if(desc.Parent == null) {
-            TryEndBundleLoading(desc);
-        } else {
-            TryEndBundleLoading(desc.Parent);
-        }
-    }
-
-    private static void OneOfAssetsLoaded(AsyncOperation op) {
-        op.completed -= OneOfAssetsLoaded;
-        Debug.Log("Asset Loaded");
-
-        var operation = (AssetBundleRequest)op;
-        var handle    = LoadingAssets[operation];
-        var id        = GetId(handle.Hash);
-        var desc      = AllAssets[id].Description;
-
-        AllAssets[id].Reference = operation.asset;
-
-        if(desc.Parent == null) {
-            TryEndAssetLoading(desc);
-        } else {
-            TryEndAssetLoading(desc.Parent);
-        }
-    }
-
     private static AssetHandle PushLoading(string name, AssetDescription desc, AsyncOperation op, AssetBundle bundle = null) {
         var hash = (uint)name.GetHashCode();
         var id   = GetNewId(hash);
@@ -723,7 +613,7 @@ public static class ResourceManager {
         desc.Hash   = hash;
         handle.Hash = hash;
 
-        asset.State       = AssetState.Loading;
+        asset.Status       = AssetStatus.Loading;
         asset.Name        = name;
         asset.Hash        = hash;
         asset.Bundle      = bundle;
@@ -732,52 +622,89 @@ public static class ResourceManager {
 
         AllAssets[id] = asset;
 
-        LoadingAssets.Add(op, handle);
+        // LoadingAssets.Add(op, handle);
 
         return handle;
     }
 
-    private static void TryEndBundleLoading(AssetDescription parent) {
-        var id = GetId(parent.Hash);
+    private static IEnumerator LoadSingleAsset(AssetDescription ass, OnAssetLoad onLoad) {
+        while(ass.Operation.isDone == false) yield return null;
 
-        foreach(var child in parent.Operations) {
-            if(child.isDone == false) return;
+        if(ass.Type == AssetLoadingType.SingleBundle) {
+            var operation  = (AssetBundleCreateRequest)ass.Operation;
+            var id         = GetId(ass.Hash);
+            var bundle     = operation.assetBundle;
+            var names      = bundle.GetAllAssetNames();
+
+            foreach(var assetPath in names) {
+                var assetName = AssetNameFromPath(assetPath, assetPath.Length);
+                var assetHash = (uint)assetName.GetHashCode();
+
+                BundleByAssetHash.Add(assetHash, bundle);
+            }
+
+            AllAssets[id].Status  = AssetStatus.Loaded;
+            AllAssets[id].Bundle = operation.assetBundle;
+        } else {
+            var operation  = (AssetBundleRequest)ass.Operation;
+            var id         = GetId(ass.Hash);
+
+            AllAssets[id].Status     = AssetStatus.Loaded;
+            AllAssets[id].Reference = operation.asset;
         }
 
-        AllAssets[id].State  = AssetState.Loaded;
-
-        LoadingAssets.Remove(parent.Operation);
-
-        foreach(var child in parent.Batch) {
-            ref var asset = ref AllAssets[child];
-            asset.State   = AssetState.Loaded;
-
-            LoadingAssets.Remove(asset.Description.Operation);
-        }
-
-        parent.OnBundleLoad();
+        onLoad();
     }
 
-    private static void TryEndAssetLoading(AssetDescription parent) {
-        var id = GetId(parent.Hash);
+    private static IEnumerator LoadMultipleAssets(List<AssetDescription> list, OnAssetLoad onLoad) {
+        var count = list.Count;
 
-        foreach(var child in parent.Operations) {
-            if(child.isDone == false) return;
+        while(true) {
+            var allDone = true;
+
+            for(var i = 0; i < count; ++i) {
+                if(!list[i].Operation.isDone) {
+                    allDone = false;
+                    break;
+                }
+            }
+
+            if(allDone) break;
+
+            yield return null;
         }
 
-        AllAssets[id].State  = AssetState.Loaded;
+        if(list[0].Type == AssetLoadingType.MultipleAssets) {
+            for(var i = 0; i < count; ++i) {
+                var desc      = list[i];
+                var operation = (AssetBundleRequest)desc.Operation;
+                var id        = GetId(desc.Hash);
 
-        LoadingAssets.Remove(parent.Operation);
+                AllAssets[id].Reference = operation.asset;
+                AllAssets[id].Status     = AssetStatus.Loaded;
+            }
+        } else {
+            for(var i = 0; i < count; ++i) {
+                var desc      = list[i];
+                var operation = (AssetBundleCreateRequest)desc.Operation;
+                var id        = GetId(desc.Hash);
+                var bundle    = operation.assetBundle;
+                var names     = bundle.GetAllAssetNames();
 
-        foreach(var child in parent.Batch) {
-            ref var asset = ref AllAssets[child];
-            asset.State   = AssetState.Loaded;
+                foreach(var assetPath in names) {
+                    var assetName = AssetNameFromPath(assetPath, assetPath.Length);
+                    var assetHash = (uint)assetName.GetHashCode();
 
-            if(asset.Description.Operation != null) {
-                LoadingAssets.Remove(asset.Description.Operation);
+                    BundleByAssetHash.Add(assetHash, bundle);
+                }
+
+                AllAssets[id].Bundle = bundle;
+                AllAssets[id].Status  = AssetStatus.Loaded;
             }
         }
 
-        parent.OnAssetLoad();
+        onLoad();
+
+        ListPool<AssetDescription>.Release(list);
     }
 }

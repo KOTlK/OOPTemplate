@@ -1,6 +1,16 @@
 # OOP Template
 Easy-to-use object oriented template for Unity.
 
+# Table of content
+- [EntitySystem](#entity-system)
+- [Saving](#saving)
+- [Config](#config)
+- [Events](#events)
+- [Resource Management](#resource-management)
+- [Localization](#localization)
+- [Coroutines](#coroutines)
+
+
 # Entity System
 
 ## Entity
@@ -36,7 +46,7 @@ For this purposes, it has `CreateEntity` and `CreateEntityReturnReference` metho
 The former returns [EntityHandle](#entityhandle), while the latter [Entity](#entity). For most cases you need only the first one.  
 The `EntityManager`, as the name says, manages all the entities. It updates them when they need to, updates their positions inside spatial grid, moves them, etc...
 
-## Saving
+# Saving
 The template comes with build-in saving support.  
 To save/load your type's data, implement [ISave](Assets/src/Saving/ISave.cs) interface.  
 Then, use one of the `SaveSystem`'s methods of saving.  
@@ -96,7 +106,7 @@ public struct Data : ISave {
 Also, you can use `SaveFile[] GetAllSaves()` method to get all save files.  
 You can always change the directory, where your save files stored, in [SaveSystem](Assets/src/Saving/SaveSystem.cs).
 
-## Config
+# Config
 [Config](Assets/src/Utility/Config.cs) is just a simple way of storing global config data in a single place.  
 It loads the data from a [config file](Assets/StreamingAssets/Config.cfg).  
 ### How to use:
@@ -127,7 +137,7 @@ Float 13.37
 Call `ParseVars()` function. All the additional information can be found in [Config.cs](Assets/src/Utility/Config.cs) and [Config.cfg](Assets/StreamingAssets/Config.cfg) files.
 
 
-## Events
+# Events
 [Events](Assets/src/Events/Events.cs) contains general events and private events.  
 An example of private events can be Player events or Market events.  
 First, you need to create an event type. It can be either struct or a class.  
@@ -160,14 +170,14 @@ As you can see in the code above, you can subscribe to event using `Events.SubGe
 To raise event, call `Events.Raise(event)` and pass instance of the event.  
 Do not use it for processing input events, it's not made for it. Also it is <span style="color:rgb(255, 0, 0)">NOT</span> a replacement for C# events.  
 
-## Resource Management
+# Resource Management
 Using the [ResourceManager](Assets/src/Resource/ResourceManager.cs) you can load/unload/instantiate game resource.  
 The template forces you to use AssetBundles for your assets pipeline.  
 To build the bundles, use `Asset Bundles/Build Bundles` in Unity's menu.  
 Unfortunately, you always have to rebuild your bundles, when any of the assets changes. Maybe later I will make partial assets rebuild.  
 When you call `ResourceManager.LoadAsset(name)`/`ResourceManager.LoadBundle(name)`, or it's async versions, it will return you the handle to an asset. Using this handle, you can:
  - Instantiate the object with `Instantiate<T>(...)` methods.
- - Get the loading progress of the asset/bundle with `float GetLoadingProgress(AssetHandle handle)` method. The progress is in [0-1] range.
+ - Get the loading progress of the asset/bundle with `float GetLoadingProgress(AssetHandle handle)` method. The progress is in [0-1] range. Note, that, if loading operation progress equals to 1, but the onLoad action is not yet performed, you should wait for that action. Unity doing it's dirty work.
 
 Make sure you always load bundle, containing the asset, before loading an asset.  
 Typical use case:
@@ -201,9 +211,21 @@ void Start() :
     player.DoStuff();
 ```
 
-Async loading of multiple assets work poorly, because Unity somehow manages to trigger onComplete events for AsyncOperation 10-180 seconds after the assets are realy loaded and my implementation depends on this events. So I suggest you not to load multiple assets asynchronously with `LoadAssetsAsync`.
+Multiple Assets loading:
+``` C#
+using static ResourceManager;
 
-## Localization
+Handle = LoadBundles(OnBundleLoad, "playables", "music", "environment")
+
+void OnBundlesLoad() :
+    Handle = LoadAssets(OnAssetsLoad, "player", "battle_music", "chair");
+
+void OnAssetsLoad() :
+    instantiate assets
+
+```
+
+# Localization
 Use `Localization/Editor` button to open localization editor.  
 Inside this editor you can load/save/make new localization entries.  
 The localization entry consist of identifier, tag and text.  
@@ -278,3 +300,45 @@ public class Dialogue : MonoBehaviour {
 Inside [Prefabs](Assets/Prefabs/UI) directory located `LocalizedText` file, simple wrapper on TMP_Text, use it if you need.
 
 You can see localization file examples inside `StreamingAssets/Localization` directory.
+
+# Coroutines
+Works like Unity's coroutines, but don't need GameObject to run.  
+Call `Coroutines.InitCoroutines()` in the initialization code to init the module. And `Coroutines.RunCoroutines()` somewhere in your update code ([here](Assets/src/Main.cs)) to update coroutines. Don't forget to call it, if you use `ResourceManager`, it depends on coroutines.  
+Unity's build-in coroutines are not supported (WaitForSeconds etc.).  
+Start coroutine with `Coroutines.BeginCoroutine()`. This function will return you `CoroutineHandle`. Which you can use to stop coroutine, using `Coroutines.EndCoroutine(handle)` and get coroutine's status with `Coroutines.GetCoroutineStatus(handle)`.  
+The naming differs from Unity's, because c# static dispatch can't handle it 🙂.
+
+``` C#
+using static Coroutines;
+
+public CoroutineHandle Handle;
+
+public void Start() {
+    Handle = BeginCoroutine(CustomCoroutine(10f, 20));
+}
+
+public void Update() {
+    if (Input.GetKeyDown(KeyCode.Space)) {
+        EndCoroutine(Handle);
+    }
+}
+
+private IEnumerator CustomCoroutine(float wait, int countTo) {
+    Debug.Log("Enter");
+
+    var i = 0;
+
+    while(i < countTo) {
+        Debug.Log("Counting");
+        i++;
+    }
+
+    Debug.Log("Counted");
+
+    Debug.Log("Waiting");
+
+    yield return Wait(wait);
+
+    Debug.Log("Done");
+}
+```

@@ -53,10 +53,10 @@ public struct EntityHandle : ISave {
     }
 }
 
-public class EntityManager : MonoBehaviour, ISave {
+public unsafe class EntityManager : MonoBehaviour, ISave {
     public World                                        World;
     public List<Entity>                                 BakedEntities;
-    public List<MovedEntity>                            MovedEntities           = new ();
+    public List<MovedEntity>                            MovedEntities           = new();
     public Dictionary<EntityType, List<EntityHandle>>   EntitiesByType          = new();
     public Dictionary<int, EntityHandle>                EntityByInstanceId      = new(); // GetEntity by Unity InstanceId
     public PackedEntity[]                               Entities                = new PackedEntity[128];

@@ -15,6 +15,7 @@ public class Main : MonoBehaviour {
         Config.ParseVars();
         Locale.LoadLocalization(Localization);
         InitContext();
+        Coroutines.InitCoroutines();
         TaskRunner = new TaskRunner();
         Events.Init();
         ResourceManager.Initialize();
@@ -40,6 +41,7 @@ public class Main : MonoBehaviour {
     private void Update() {
         SingleFrameArena.Free();
         Clock.Update();
+        Coroutines.RunCoroutines();
         TaskRunner.RunTaskGroup(TaskGroupType.ExecuteAlways);
         EntityManager.Execute();
     }
