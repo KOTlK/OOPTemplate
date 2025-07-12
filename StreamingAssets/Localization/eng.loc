@@ -1,0 +1,27 @@
+// This is a commentary
+/*
+    This
+    is
+    also
+    a
+    commentary
+*/
+/*
+    Format:
+
+    Key : tag : "string"
+    OR
+    Key : "string"
+    In the latter case, tag will be set to None.
+*/
+3123213     :   ui  :   "Hello World!"
+5124312     :   ui  :   "Hello World 2!"
+// comment
+5234        :   ui  :   "Hello World 3!"
+981230128   :   ui  :   "Hello Wo\nrld 4!"
+/*
+one more comment
+*/
+-5234       :   "Hello World 5!"
+
+

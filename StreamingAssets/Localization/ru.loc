@@ -1,0 +1,21 @@
+/*
+
+    Format:
+
+    Key : tag : "string"
+    OR
+    Key : "string"
+    In the latter case, tag will be set to None.
+
+*/
+3123213             :   UI          :   "Привет Мир!"
+5124312             :   UI          :   "Привет Мир 2!"
+/*
+ comment
+*/
+5234                :   UI          :   "Привет Мир 3!"
+981230128           :   UI          :   "Привет М\nир 4!"
+/*
+one more comment
+*/
+-5234               :   None        :   "Привет Мир 5!"

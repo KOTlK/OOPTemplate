@@ -1,0 +1,12 @@
+3123213     :    "Hello World!"
+// This is a commentary
+/*
+    This
+    is
+    also
+    a
+    commentary
+*/
+5124312     :    "Hello World 2!"
+5234        :    "Hello World 3!"
+9812301283  :    "Hello Wo\nrld 4!"
