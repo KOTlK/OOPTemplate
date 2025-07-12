@@ -2,6 +2,7 @@
 Easy-to-use object oriented template for Unity.
 
 # Table of content
+- [Installation](#installation)
 - [EntitySystem](#entity-system)
 - [Saving](#saving)
 - [Config](#config)
@@ -10,6 +11,18 @@ Easy-to-use object oriented template for Unity.
 - [Localization](#localization)
 - [Coroutines](#coroutines)
 
+
+# Installation
+ - Create new empty Unity project.
+ - Move to your project's `Assets` folder
+ - Paste into terminal:
+
+ ``` 
+git init
+git remote add origin https://github.com/KOTlK/OOPTemplate.git
+git fetch
+git reset --hard origin/main
+```
 
 # Entity System
 
