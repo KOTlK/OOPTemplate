@@ -10,7 +10,7 @@ public enum ButtonClickType {
     OnRelease = 1
 }
 
-public class DecentButton : MonoBehaviour,
+public class DecentButton : UIElement,
                             IPointerDownHandler,
                             IPointerUpHandler,
                             IPointerEnterHandler,
@@ -50,7 +50,7 @@ public class DecentButton : MonoBehaviour,
         }
     }
 
-    private void LateUpdate() {
+    public override void UpdateLate(float dt) {
         if(Clicked) {
             Clicked = false;
         }

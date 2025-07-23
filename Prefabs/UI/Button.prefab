@@ -186,6 +186,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 52fbe1e14ecd1984dbcbe7e680bda701, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Id: 0
+  Flags: 2
   ClickType: 0
   Background: {fileID: 0}
   Color: {r: 1, g: 0, b: 0, a: 1}

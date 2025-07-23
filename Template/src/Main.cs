@@ -4,10 +4,11 @@ using UnityEditor;
 #endif
 
 using static Context;
+using static UIManager;
 
-[Version(19)]
 public class Main : MonoBehaviour {
     public EntityManager  EntityManager;
+    public Canvas         UIParent;
     public TaskRunner     TaskRunner;
     public string         Localization = "eng";
 
@@ -22,7 +23,8 @@ public class Main : MonoBehaviour {
         SaveSystem.Init();
 
         Singleton<EntityManager>.Create(EntityManager);
-        Singleton<TaskRunner>.Create(TaskRunner);
+        UIManager.Init(UIParent, UIParent.transform);
+        UIManager.RegisterDependencies(EntityManager);
 
         DontDestroyOnLoad(gameObject);
     }
@@ -41,9 +43,11 @@ public class Main : MonoBehaviour {
     private void Update() {
         SingleFrameArena.Free();
         Clock.Update();
+        UpdateUI(Clock.Delta);
         Coroutines.RunCoroutines();
         TaskRunner.RunTaskGroup(TaskGroupType.ExecuteAlways);
         EntityManager.Execute();
+        UpdateLateUI(Clock.Delta);
     }
 
     [ConsoleCommand("quit")]

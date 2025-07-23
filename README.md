@@ -10,6 +10,7 @@ Easy-to-use object oriented template for Unity.
 - [Resource Management](#resource-management)
 - [Localization](#localization)
 - [Coroutines](#coroutines)
+- [UIManager](#uimanager)
 
 
 # Installation
@@ -355,3 +356,85 @@ private IEnumerator CustomCoroutine(float wait, int countTo) {
     Debug.Log("Done");
 }
 ```
+
+# UIManager
+Before using the module, initialize it with `Init(canvas, parent)`
+by default parent is canvas.  
+Configure UI update frequency by changing `UIFps` field.  
+Register dependencies with `RegisterDependencies` or `RegisterDependency` functions.
+
+To create ui elements, use `MakeUIElement` functions.
+Functions with string as first argument are loading asset from `ResourceManager`
+before making an element.
+
+To bake already existing element, use `BakeUIElement` function or
+attach [UIBaker](Template/src/ui/UIBaker.cs) component to the element and it will automatically bake
+the element on Start.
+
+To bind already existing element with a name, use `BindUIElement` function or
+attach [UIBinder](Template/src/ui/UIBinder.cs) component to the element and it will automatically bind
+the element on Start.
+
+To make unique ui element, use `MakeUniqueUI<T>`.
+Access unique element with `GetUniqueUI<T>`.
+
+Update ui by calling UpdateUI and UpdateLateUI.
+
+Here some ways of how you can display score, using the `UIManager`
+
+Use dependency container:
+``` C#
+public class ScoreUI : UIElement {
+    public TMP_Text Text;
+    public Score    Score;
+
+    public override void ResolveDependencies(Container c) {
+        Score = c.Resolve<Score>();
+    }
+
+    public override void UpdateElement(float dt) {
+        Text.text = Score.Total.ToString();
+    }
+}
+```
+
+Access unique ui element:
+``` C#
+class Score {
+    uint total_score;
+
+    void IncreaseScore(uint count) {
+        total_score += count;
+        UIManager.GetUnique<ScoreUI>().UpdateTotalScore(total_score);
+    }
+}
+```
+
+Update element by accessing score directly
+``` C#
+class Score {
+    uint total_score;
+
+    void IncreaseScore(uint count) {
+        total_score += count;
+    }
+}
+
+class ScoreUI : UIElement {
+    TMP_Text text;
+
+    override void UpdateElement(float dt) {
+        var score = Singleton<Score>.Instance;
+        text.text = score.total_score;
+    }
+}
+```
+
+You don't need mvc if you use your brain instead of reading articles on hackernews.  
+
+`UIElements` can be separated by update time.  
+`UpdateUI` should be called before gameplay code and `UpdateLateUI` after.  
+Don't forget to configure flags on `UIElement`.  
+If it has `Dynamic` flag, it will be updated during `UpdateUI`.
+If it has `UpdateLately` flag, it will be updated during `UpdateLateUI`.  
+If neither of flags are set it won't be updated at all.
