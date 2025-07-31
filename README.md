@@ -11,19 +11,11 @@ Easy-to-use object oriented template for Unity.
 - [Localization](#localization)
 - [Coroutines](#coroutines)
 - [UIManager](#uimanager)
+- [ComponentSystem](#componentsystem)
 
 
 # Installation
- - Create new empty Unity project.
- - Move to your project's `Assets` folder
- - Paste into terminal:
-
- ``` 
-git init
-git remote add origin https://github.com/KOTlK/OOPTemplate.git
-git fetch
-git reset --hard origin/main
-```
+    Just copy everything into Assets directory.
 
 # Entity System
 
@@ -438,3 +430,21 @@ Don't forget to configure flags on `UIElement`.
 If it has `Dynamic` flag, it will be updated during `UpdateUI`.
 If it has `UpdateLately` flag, it will be updated during `UpdateLateUI`.  
 If neither of flags are set it won't be updated at all.
+
+# ComponentSystem
+The example project using it, can be found [HERE](https://github.com/KOTlK/FireSpread).  
+With component system you can add component to an Entity.  
+This is not ECS, you can't filter entities, there is no archetypes, etc.  
+Prefere to use fat struct for your component instead of having more components.  
+Before using each component system, you should initialize it with  
+`ComponentSystem<T>.Make(UpdateFunc)`.  
+`UpdateFunc` is a method with signature: `void UpdateFunc(T[] components, int count)`.  
+In the update function iterate through components and do whatever you want to.  
+⚠ Always start iteration from 1. `for(int i = 1; i < count; i++)`.  
+Or you can use `ComponentSystem<T>.Iterate()` to iterate through components, but it's slower.  
+`foreach(var component in ComponentSystem<Component>.Iterate()) ...`  
+Update system directly with `ComponentSystem<T>.Update()`.  
+Add, remove, get, check component, using `ComponentSystem<T>.Add/Remove/Get/Has()` or  
+Use extension methods for `EntityHandle` and `Entity`:  
+`handle.AddComponent<Component>(new Component())`,  
+`entity.AddComponent<Component>()`.  
