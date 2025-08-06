@@ -2,6 +2,7 @@ using System;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using Unity.Mathematics;
+using Unity.Profiling;
 using static Assertions;
 using static ArrayUtils;
 
@@ -13,7 +14,7 @@ public class UnboundedSpatialTable : IDisposable {
 
     public struct Entity {
         public float3 Position;
-        public int     Hash;
+        public long     Hash;
     }
 
     public EntityTable<Entity> Positions;
@@ -21,6 +22,9 @@ public class UnboundedSpatialTable : IDisposable {
     public EntityReference[] EntityTable;
     public uint   Size;
     public float Spacing;
+
+    private static ProfilerMarker Cycle = new ProfilerMarker(nameof(Cycle));
+    private static ProfilerMarker Hashing = new ProfilerMarker(nameof(Hashing));
 
     public UnboundedSpatialTable(uint size, float spacing) {
         Size        = size;
@@ -82,6 +86,7 @@ public class UnboundedSpatialTable : IDisposable {
     }
 
     public uint Query(float3 position, uint[] result, float radius, uint count = 0) {
+        var len  = result.Length;
         var xmax = IntCoordinateSigned(position.x + radius);
         var ymax = IntCoordinateSigned(position.y + radius);
         var zmax = IntCoordinateSigned(position.z + radius);
@@ -89,25 +94,32 @@ public class UnboundedSpatialTable : IDisposable {
         var ymin = IntCoordinateSigned(position.y - radius);
         var zmin = IntCoordinateSigned(position.z - radius);
 
+        Cycle.Begin();
         for(var x = xmin; x <= xmax; ++x) {
             for(var y = ymin; y <= ymax; ++y) {
                 for(var z = zmin; z <= zmax; ++z) {
+                    Hashing.Begin();
                     var hash  = Hash(x, y, z);
                     var start = CellCount[hash];
                     var end   = CellCount[hash + 1];
+                    Hashing.End();
 
                     for(var i = start; i < end; ++i) {
-                        if(count == result.Length) {
-                            return count;
-                        }
+                        var e = EntityTable[i];
+                        if(math.distance(e.Position, position) <= radius) {
+                            result[count++] = e.Id;
 
-                        if(math.distance(EntityTable[i].Position, position) <= radius) {
-                            result[count++] = EntityTable[i].Id;
+                            if(count == len) {
+                                Cycle.End();
+                                return count;
+                            }
                         }
                     }
                 }
             }
         }
+
+        Cycle.End();
 
         return count;
     }
@@ -135,16 +147,16 @@ public class UnboundedSpatialTable : IDisposable {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int Hash(int x, int y, int z) {
-        return (int)(math.abs((x * 92837111)  ^
-                              (y * 689287499) ^
-                              (z * 283923481)) % Size);
+    private long Hash(int x, int y, int z) {
+        return math.abs((x * 9283) +
+                        (y * 6892) +
+                        (z * 2839)) % Size;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int Hash(float3 position) {
-        return (int)(math.abs((IntCoordinate(position.x) * 92837111) ^
-                         (IntCoordinate(position.y) * 689287499) ^
-                         (IntCoordinate(position.z) * 283923481)) % Size);
+    private long Hash(float3 position) {
+        return math.abs((IntCoordinate(position.x) * 9283) +
+                        (IntCoordinate(position.y) * 6892) +
+                        (IntCoordinate(position.z) * 2839)) % Size;
     }
 }

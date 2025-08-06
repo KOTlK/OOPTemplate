@@ -10,9 +10,9 @@ public unsafe struct Region : IDisposable {
     public long    Allocated;
     public long    Capacity;
 
-    private const long MinSize = 65536;
+    private const long MinSize = 8 * 1024 * 1024; // 8mb
 
-    public void Init(long capacity) {
+    public void Init(long capacity = 0) {
         var size = MinSize;
         if(MinSize < capacity) {
             size = capacity;
@@ -85,7 +85,7 @@ public unsafe struct Region : IDisposable {
 public unsafe struct Arena {
     public Region *Root;
 
-    public Arena(long size) {
+    public Arena(long size = 0) {
 #if UNITY_EDITOR_WIN
         Root = (Region*)MallocTracked(sizeof(Region), AlignOf<Region>(), Allocator.Persistent, 0);
 #else
