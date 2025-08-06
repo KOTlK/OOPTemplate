@@ -1,16 +1,22 @@
 using System;
 using System.Runtime.CompilerServices;
 using UnityEngine;
+using Unity.Mathematics;
 using static Assertions;
 using static ArrayUtils;
 
 public class UnboundedSpatialTable : IDisposable {
     public struct EntityReference {
-        public Vector3 Position;
+        public float3 Position;
         public uint Id;
     }
-    
-    public EntityTable<Vector3> Positions;
+
+    public struct Entity {
+        public float3 Position;
+        public int     Hash;
+    }
+
+    public EntityTable<Entity> Positions;
     public int[] CellCount;
     public EntityReference[] EntityTable;
     public uint   Size;
@@ -21,7 +27,7 @@ public class UnboundedSpatialTable : IDisposable {
         Spacing     = spacing;
         CellCount   = new int[size + 1];
         EntityTable = new EntityReference[size];
-        Positions   = new EntityTable<Vector3>(size);
+        Positions   = new EntityTable<Entity>(size);
     }
 
     public void Dispose() {
@@ -29,8 +35,11 @@ public class UnboundedSpatialTable : IDisposable {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void AddEntity(uint entity, Vector3 position) {
-        Positions[entity] = position;
+    public void AddEntity(uint entity, float3 position) {
+        var e = new Entity();
+        e.Position = position;
+        e.Hash     = Hash(position);
+        Positions[entity] = e;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -39,12 +48,12 @@ public class UnboundedSpatialTable : IDisposable {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void UpdatePosition(uint entity, Vector3 newPos) {
-        Assert(Positions.ContainsKey(entity));
-        if (Positions.ContainsKey(entity) == false) {
-            Debug.Log("False");
-        }
-        Positions[entity] = newPos;
+    public void UpdatePosition(uint entity, float3 newPos) {
+        Assert(Positions.ContainsKey(entity), $"Table does not contain entity {entity}");
+        var e = new Entity();
+        e.Position = newPos;
+        e.Hash     = Hash(newPos);
+        Positions[entity] = e;
     }
 
     public void Rehash() {
@@ -56,24 +65,23 @@ public class UnboundedSpatialTable : IDisposable {
         Array.Clear(CellCount, 0, CellCount.Length);
         Array.Clear(EntityTable, 0, EntityTable.Length);
 
-        foreach(var (entity, position) in Positions.Iterate()) {
-            var hash = Hash(position);
-            CellCount[hash]++;
+        foreach(var (id, entity) in Positions.Iterate()) {
+            CellCount[entity.Hash]++;
         }
 
         for(var i = 1; i < CellCount.Length; ++i) {
             CellCount[i] += CellCount[i - 1];
         }
 
-        foreach(var (entity, position) in Positions.Iterate()) {
-            var hash = Hash(position);
+        foreach(var (id, entity) in Positions.Iterate()) {
+            var hash = entity.Hash;
             CellCount[hash]--;
-            EntityTable[CellCount[hash]].Id = entity;
-            EntityTable[CellCount[hash]].Position = position;
+            EntityTable[CellCount[hash]].Id = id;
+            EntityTable[CellCount[hash]].Position = entity.Position;
         }
     }
 
-    public uint Query(Vector3 position, uint[] result, float radius, uint count = 0) {
+    public uint Query(float3 position, uint[] result, float radius, uint count = 0) {
         var xmax = IntCoordinateSigned(position.x + radius);
         var ymax = IntCoordinateSigned(position.y + radius);
         var zmax = IntCoordinateSigned(position.z + radius);
@@ -93,7 +101,7 @@ public class UnboundedSpatialTable : IDisposable {
                             return count;
                         }
 
-                        if(Vector3.Distance(EntityTable[i].Position, position) <= radius) {
+                        if(math.distance(EntityTable[i].Position, position) <= radius) {
                             result[count++] = EntityTable[i].Id;
                         }
                     }
@@ -106,37 +114,37 @@ public class UnboundedSpatialTable : IDisposable {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int IntCoordinateSigned(float coordinate) {
-        var sign = Math.Sign(coordinate);
+        var sign = math.sign(coordinate);
 
         if(sign > 0) {
-            return Mathf.RoundToInt(coordinate / Spacing);
+            return (int)math.round(coordinate / Spacing);
         }
         else {
-            return Mathf.FloorToInt(coordinate / Spacing);
+            return (int)math.floor(coordinate / Spacing);
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int IntCoordinate(float coordinate) {
-        return Mathf.FloorToInt(coordinate / Spacing);
+        return (int)math.floor(coordinate / Spacing);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int IntCoordinateRound(float coordinate) {
-        return Mathf.RoundToInt(coordinate / Spacing);
+        return (int)math.round(coordinate / Spacing);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int Hash(int x, int y, int z) {
-        return (int)(Mathf.Abs((x * 92837111) ^ 
-                         (y * 689287499) ^ 
-                         (z * 283923481)) % Size);
+        return (int)(math.abs((x * 92837111)  ^
+                              (y * 689287499) ^
+                              (z * 283923481)) % Size);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int Hash(Vector3 position) {
-        return (int)(Mathf.Abs((IntCoordinate(position.x) * 92837111) ^ 
-                         (IntCoordinate(position.y) * 689287499) ^ 
+    private int Hash(float3 position) {
+        return (int)(math.abs((IntCoordinate(position.x) * 92837111) ^
+                         (IntCoordinate(position.y) * 689287499) ^
                          (IntCoordinate(position.z) * 283923481)) % Size);
     }
 }
