@@ -23,9 +23,6 @@ public class UnboundedSpatialTable : IDisposable {
     public uint   Size;
     public float Spacing;
 
-    private static ProfilerMarker Cycle = new ProfilerMarker(nameof(Cycle));
-    private static ProfilerMarker Hashing = new ProfilerMarker(nameof(Hashing));
-
     public UnboundedSpatialTable(uint size, float spacing) {
         Size        = size;
         Spacing     = spacing;
@@ -66,6 +63,7 @@ public class UnboundedSpatialTable : IDisposable {
             Resize(ref CellCount, Size + 1);
             Resize(ref EntityTable, Size);
         }
+
         Array.Clear(CellCount, 0, CellCount.Length);
         Array.Clear(EntityTable, 0, EntityTable.Length);
 
@@ -94,15 +92,12 @@ public class UnboundedSpatialTable : IDisposable {
         var ymin = IntCoordinateSigned(position.y - radius);
         var zmin = IntCoordinateSigned(position.z - radius);
 
-        Cycle.Begin();
         for(var x = xmin; x <= xmax; ++x) {
             for(var y = ymin; y <= ymax; ++y) {
                 for(var z = zmin; z <= zmax; ++z) {
-                    Hashing.Begin();
                     var hash  = Hash(x, y, z);
                     var start = CellCount[hash];
                     var end   = CellCount[hash + 1];
-                    Hashing.End();
 
                     for(var i = start; i < end; ++i) {
                         var e = EntityTable[i];
@@ -110,7 +105,6 @@ public class UnboundedSpatialTable : IDisposable {
                             result[count++] = e.Id;
 
                             if(count == len) {
-                                Cycle.End();
                                 return count;
                             }
                         }
@@ -118,8 +112,6 @@ public class UnboundedSpatialTable : IDisposable {
                 }
             }
         }
-
-        Cycle.End();
 
         return count;
     }
