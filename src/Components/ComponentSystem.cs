@@ -56,6 +56,15 @@ where T : struct {
         return ref Components[ComponentIdByHandleId[h.Id]];
     }
 
+    public static bool TryGet(EntityHandle h, ref T o) {
+        if (Has(h) == false) {
+            return false;
+        }
+
+        o = Components[ComponentIdByHandleId[h.Id]];
+        return true;
+    }
+
     public static bool Has(EntityHandle h) {
         return h.Id < ComponentIdByHandleId.Length && ComponentIdByHandleId[h.Id] != 0;
     }
