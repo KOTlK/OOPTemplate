@@ -14,13 +14,13 @@ public struct MovedEntity {
 
 [Serializable]
 public struct PackedEntity {
-    public Entity        Entity;
-    public EntityType    Type;
-    public uint          Tag; // Slot's generational index
-    public bool          Alive;
+    [DontSave] public Entity        Entity;
+               public EntityType    Type;
+               public uint          Tag; // Slot's generational index
+               public bool          Alive;
 }
 
-public struct EntityHandle : ISave {
+public struct EntityHandle {
     public uint Id;
     public uint Tag;
 
@@ -41,20 +41,10 @@ public struct EntityHandle : ISave {
     public override int GetHashCode() {
         return HashCode.Combine(Id, Tag);
     }
-
-    public void Save(ISaveFile sf) {
-        sf.Write(Id, nameof(Id));
-        sf.Write(Tag, nameof(Tag));
-    }
-
-    public void Load(ISaveFile sf) {
-        Id  = sf.Read<uint>(nameof(Id));
-        Tag = sf.Read<uint>(nameof(Tag));
-    }
 }
 
-public unsafe class EntityManager : MonoBehaviour, ISave {
-    public World                                        World;
+public unsafe class EntityManager : MonoBehaviour {
+    public World                             World;
     public List<Entity>                                 BakedEntities;
     public List<MovedEntity>                            MovedEntities           = new();
     public Dictionary<EntityType, List<EntityHandle>>   EntitiesByType          = new();
@@ -88,14 +78,27 @@ public unsafe class EntityManager : MonoBehaviour, ISave {
         Console.RegisterCommand<EntityManager>(nameof(DestroyEntityImmediate), this, "destroy_entity_immediate");
     }
 
-    public virtual void Save(ISaveFile sf) { // @Incomplete Save and Load World?
-        sf.Write(MaxEntitiesCount, nameof(MaxEntitiesCount));
+    public void Save(BinarySaveFile sf) {
+        sf.Write(MaxEntitiesCount);
         for(uint i = 1; i < MaxEntitiesCount; ++i) {
-            sf.WritePackedEntity(Entities[i], i, $"EntityNum{i}");
+            sf.Write(Entities[i].Type);
+            sf.Write(Entities[i].Tag);
+            sf.Write(Entities[i].Alive);
+
+            if (Entities[i].Alive && Entities[i].Entity != null) {
+                var entity = Entities[i].Entity;
+                sf.Write(entity.Name);
+                sf.Write(entity.Position);
+                sf.Write(entity.Rotation);
+                sf.Write(entity.Scale);
+                sf.Write(entity.Type);
+                sf.Write(entity.Flags);
+                sf.Write(entity);
+            }
         }
     }
 
-    public virtual void Load(ISaveFile sf) {
+    public void Load(BinarySaveFile sf) {
         // Clear everything
         for(uint i = 0; i < MaxEntitiesCount; ++i) {
             DestroyEntityImmediate(i);
@@ -106,11 +109,30 @@ public unsafe class EntityManager : MonoBehaviour, ISave {
         EntitiesToRemoveCount = 0;
         MovedEntities.Clear();
         DynamicEntities.Clear();
+        World.Dispose();
+        World.Create();
 
-        var entitiesCount = sf.Read<uint>(nameof(MaxEntitiesCount));
+        var entitiesCount = sf.Read<uint>();
         Entities          = new PackedEntity[entitiesCount];
         for(var i = 1; i < entitiesCount; ++i) {
-            Entities[i] = sf.ReadPackedEntity(this, $"EntityNum{i}");
+            var pe = new PackedEntity();
+
+            pe.Entity = null;
+            pe.Type   = sf.Read<EntityType>();
+            pe.Tag    = sf.Read<uint>();
+            pe.Alive  = sf.Read<bool>();
+
+            if (pe.Alive) {
+                pe.Entity = RecreateEntity(sf.Read<string>(),
+                                           sf.Read<Vector3>(),
+                                           sf.Read<Quaternion>(),
+                                           sf.Read<Vector3>(),
+                                           sf.Read<EntityType>(),
+                                           sf.Read<EntityFlags>());
+                sf.Read(pe.Entity);
+            }
+
+            Entities[i] = pe;
         }
     }
 

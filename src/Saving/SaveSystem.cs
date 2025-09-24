@@ -6,11 +6,6 @@ using UnityEngine;
 
 using static Assertions;
 
-public enum SaveType {
-    Text,
-    Binary
-}
-
 public struct SaveFile {
     public string   Path;
     public string   Name;
@@ -22,24 +17,34 @@ public struct SaveFile {
 }
 
 public static class SaveSystem {
-    public delegate void SaveFunc(ISaveFile sf);
-    public delegate void LoadFunc(ISaveFile sf);
+    public delegate void SaveFunc(BinarySaveFile sf);
+    public delegate void LoadFunc(BinarySaveFile sf);
 
     public static uint  Version = 2;
-    public static event Action<ISaveFile> LoadingOver = delegate { };
+    public static event Action<BinarySaveFile> LoadingOver = delegate { };
 
-    public static SaveType  Type = SaveType.Binary;
-    public static ISaveFile Sf;
+    public static BinarySaveFile Sf;
 
     public static int    MaxBackups     = 5;
     public static string SavesDirectory = $"{Application.persistentDataPath}/Saves";
     public static string Extension      = "save";
 
-    private static List<SaveFile> SavesList = new();
-    private static StringBuilder  Sb = new();
+    private static List<SaveFile> SavesList;
+    private static StringBuilder  Sb;
 
-    public static void Init(SaveType type = SaveType.Binary) {
-        ChangeSaveFileType(type);
+    public static void Init() {
+        SavesList = new();
+        SavesList.Clear();
+        Sb = new();
+        Sb.Clear();
+
+        if (Sf != null) {
+            Sf.Dispose();
+            Sf = null;
+        }
+
+        Sf = new();
+
         TypeVersion.Init();
 
         if(Directory.Exists(SavesDirectory) == false) {
@@ -53,33 +58,16 @@ public static class SaveSystem {
         }
     }
 
-    public static void ChangeSaveFileType(SaveType type) {
-        if(Sf != null) {
-            Sf.Dispose();
-        }
-
-        switch (type) {
-            case SaveType.Text : {
-                Sf = new TextSaveFile();
-            }
-            break;
-            case SaveType.Binary : {
-                Sf = new BinarySaveFile();
-            }
-            break;
-        }
-    }
-
     public static void Save(SaveFunc func, string name) {
         var sf = BeginSave();
         func(sf);
         EndSave(name);
     }
 
-    public static ISaveFile BeginSave() {
+    public static BinarySaveFile BeginSave() {
         TypeVersion.UpdateToCurrent();
         Sf.NewFile();
-        Sf.Write(Version, nameof(Version));
+        Sf.Write(Version);
         return Sf;
     }
 
@@ -131,11 +119,11 @@ public static class SaveSystem {
         EndLoading();
     }
 
-    public static ISaveFile BeginLoading(string fileName) {
+    public static BinarySaveFile BeginLoading(string fileName) {
         var path = $"{SavesDirectory}/{fileName}.{Extension}";
         Assert(SaveExist(fileName), $"File {path} does not exist");
         Sf.LoadFromFile(path);
-        Version = Sf.Read<uint>(nameof(Version));
+        Version = Sf.Read<uint>();
         return Sf;
     }
 

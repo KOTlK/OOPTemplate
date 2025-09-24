@@ -1,18 +1,75 @@
 using System.Diagnostics;
+using System.Text;
 using Debug = UnityEngine.Debug;
+using System.Runtime.CompilerServices;
 
 public static class Assertions {
+    private static StringBuilder sb = new();
+
+    public class FUCKYOUCSHARP {}
     [Conditional("UNITY_ASSERTIONS")]
-    public static void Assert(bool expr) {
+    public static void Assert(bool          expr,
+                              string        errorMessage = "",
+                              FUCKYOUCSHARP sorry         = null,
+           [CallerFilePath]   string        filePath     = "",
+           [CallerLineNumber] int           lineNumber   = 0) {
         if(!expr) {
-            Debug.LogError("Assertion Failed");
+#if UNITY_EDITOR
+            if (UnityEditor.EditorUtility.DisplayDialog("Assert", $"Assert failed at {filePath}:{lineNumber}. {errorMessage}" , "Stop", "Don't stop")) {
+                UnityEditor.EditorApplication.isPlaying = false;
+            }
+#else
+            Debug.LogError($"Assert failed at {filePath}:{lineNumber}. {errorMessage}");
+#endif
         }
     }
 
     [Conditional("UNITY_ASSERTIONS")]
-    public static void Assert(bool expr, string errorMessage) {
+    public static void Assert(bool            expr,
+                              string          errorMessage,
+                              params object[] args) {
         if(!expr) {
-            Debug.LogError(errorMessage);
+            sb.Clear();
+
+            var stackTrace  = new StackTrace(true);
+            var frame       = stackTrace.GetFrame(1);
+            var fileName    = frame.GetFileName();
+            var lineNum     = frame.GetFileLineNumber();
+
+            sb.Append("Assert failed at ");
+            sb.Append(fileName);
+            sb.Append(':');
+            sb.Append(lineNum);
+            sb.Append(". ");
+
+            var len = errorMessage.Length;
+            var cur = 0;
+
+            for (var i = 0; i < len; i++) {
+                switch(errorMessage[i]) {
+                    case '%' :
+                        if (cur >= args.Length) {
+                            Debug.LogError("Number of arguments provided to a format function does not match.");
+                            sb.Clear();
+                            return;
+                        }
+                        sb.Append(args[cur++].ToString());
+                    break;
+                    default :
+                        sb.Append(errorMessage[i]);
+                    break;
+                }
+            }
+
+#if UNITY_EDITOR
+            if (UnityEditor.EditorUtility.DisplayDialog("Assert", sb.ToString(), "Stop", "Don't stop")) {
+                UnityEditor.EditorApplication.isPlaying = false;
+            }
+#else
+            Debug.LogError(sb.ToString());
+#endif
+
+            sb.Clear();
         }
     }
 }

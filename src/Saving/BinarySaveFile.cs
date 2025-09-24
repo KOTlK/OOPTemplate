@@ -1,18 +1,34 @@
+using System;
 using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using UnityEngine;
 using Unity.Collections;
-using System;
 
 using static Assertions;
 using static Context;
 
-public unsafe class BinarySaveFile : ISaveFile {
+public unsafe class BinarySaveFile {
+    struct ArrayElement {
+        public int    Index;
+        public object Obj;
+    }
+
     public byte[] ByteBuffer;
     public byte[] LoadedBytes;
     public int    Pointer = 0;
+    public Dictionary<Type, TypeSaveMeta> MetaData = new();
+
+    private List<ArrayElement> _arrayElements = new();
+    private object[]           _saveParams    = new object[1];
 
     public const uint InitialBufferLength = 5000;
     public const uint InitialCurrentBufferLength = 500;
+
+    public BinarySaveFile() {
+        _saveParams[0] = this;
+    }
 
     public void Dispose() {
         ByteBuffer = null;
@@ -51,70 +67,129 @@ public unsafe class BinarySaveFile : ISaveFile {
         }
     }
 
-    public void Write<T>(T value, string name = null) {
-        var type  = typeof(T);
+    public void Write<T>(T obj) {
+        if (obj == null) {
+            var size = sizeof(IntPtr);
+            if (size == 4) {
+                Write<int>(0);
+            } else {
+                Write<long>(0);
+            }
+            return;
+        }
 
-        if(type == typeof(string)) {
-            var str = (string)(object)value;
+        var type = obj.GetType();
+        // Debug.Log($"Writing: {type.ToString()}");
+
+        if (type == typeof(string)) {
+            var str   = (string)(object)obj;
             var bytes = Parse(str);
             Write(str.Length);
             PushBytes(bytes);
-        } else {
-            var bytes = Parse(value);
-            if(bytes.Data != null) {
+            return;
+        }
+
+        if (type.IsArray) {
+            // Debug.Log("ARRAY");
+            var arr = (Array)(object)obj;
+            Write(arr.Length);
+            _arrayElements.Clear();
+
+            for (var i = 0; i < arr.Length; i++) {
+                var val = arr.GetValue(i);
+
+                if (val != null) {
+                    _arrayElements.Add(new ArrayElement {
+                        Index = i,
+                        Obj   = val
+                    });
+                }
+            }
+
+            Write(_arrayElements.Count);
+
+            foreach(var elem in _arrayElements) {
+                Write(elem.Index);
+                Write(elem.Obj);
+            }
+            return;
+        }
+
+        if (type.IsPrimitive) {
+            var bytes = Parse(obj);
+            Assert(bytes.Data != null, "Cannot parse the data for type '%'", type.ToString());
+            PushBytes(bytes);
+            // Debug.Log("Primitive");
+            return;
+        }
+
+        switch(type.FullName) {
+            case "UnityEngine.Vector3"    :
+            case "UnityEngine.Vector3Int" :
+            case "UnityEngine.Vector2"    :
+            case "UnityEngine.Vector2Int" :
+            case "UnityEngine.Vector4"    :
+            case "UnityEngine.Vector4Int" :
+            case "UnityEngine.Quaternion" :
+            case "UnityEngine.Matrix4x4"  :
+                var bytes = Parse(obj);
+                Assert(bytes.Data != null, "Cannot parse the data");
                 PushBytes(bytes);
+                // Debug.Log("UNITY");
+                return;
+        }
+
+        if (type.IsSubclassOf(typeof(MonoBehaviour))) {
+            var mono = (MonoBehaviour)(object)obj;
+            var transform = mono.transform;
+
+            Write(transform.position);
+            Write(transform.rotation);
+            Write(transform.localScale);
+            Write(mono.gameObject.activeSelf);
+
+            var rb   = mono.GetComponent<Rigidbody>();
+            var rb2d = mono.GetComponent<Rigidbody2D>();
+
+            if (rb) {
+                Write(rb.position);
+                Write(rb.velocity);
+                Write(rb.angularVelocity);
+                Write(rb.mass);
+                Write(rb.drag);
+                Write(rb.angularDrag);
+            }
+
+            if (rb2d) {
+                Write(rb2d.position);
+                Write(rb2d.velocity);
+                Write(rb2d.angularVelocity);
+                Write(rb2d.mass);
+                Write(rb2d.drag);
+                Write(rb2d.angularDrag);
             }
         }
-    }
 
-    public void WriteObject(ISave save, string name = null) {
-        save.Save(this);
-    }
+        var meta = new TypeSaveMeta();
 
-    public void WriteArray<T>(T[] arr, int itemsCount, string name = null) {
-        Write(itemsCount);
+        if (MetaData.ContainsKey(type)) {
+            meta = MetaData[type];
+        } else {
+            meta = ParseMeta(type);
 
-        for(var i = 0; i < itemsCount; ++i) {
-            Write(arr[i]);
+            MetaData.Add(type, meta);
         }
-    }
 
-    public void WriteObjectArray<T>(T[] arr, int itemsCount, string name = null)
-    where T : ISave {
-        Write(itemsCount);
-
-        for(var i = 0; i < itemsCount; ++i) {
-            WriteObject(arr[i]);
+        if (meta.Save != null) {
+            // Debug.LogWarning("Save function!");
+            meta.Save.Invoke(obj, _saveParams);
+            return;
         }
-    }
 
-    public void WriteNativeArray<T>(NativeArray<T> arr, int itemsCount, string name = null)
-    where T : unmanaged {
-        Write(itemsCount);
-
-        for(var i = 0; i < itemsCount; ++i) {
-            Write(arr[i]);
+        foreach(var field in meta.Fields) {
+            // Debug.Log($"Begin write field: {field.Name}, {field.FieldType.ToString()}");
+            Write(field.GetValue(obj));
         }
-    }
-
-    public void WritePackedEntity(PackedEntity e, uint id, string name = null) {
-        Write(id);
-        WriteEnum(e.Type);
-        Write(e.Alive);
-        if(e.Alive) {
-            WriteEntity(null, e.Entity);
-        }
-    }
-
-    private void WriteEntity(string name, Entity e) {
-        WriteObject(e.Handle);
-        WriteEnum(e.Type);
-        WriteEnum(e.Flags);
-        Write(e.Name);
-        Write(e.transform.position);
-        Write(e.transform.rotation);
-        Write(e.transform.localScale);
-        e.Save(this);
     }
 
     public void WriteEnum(Enum e, string name = null) {
@@ -160,38 +235,136 @@ public unsafe class BinarySaveFile : ISaveFile {
         }
     }
 
-    public T Read<T>(string name = null, T defaultValue = default(T)) {
-        var type = typeof(T);
-        if(type == typeof(string)) {
+    public T Read<T>(T obj = default(T), Type type = null) {
+        if (type == typeof(object)) {
+            var size = sizeof(IntPtr);
+            IntPtr ptr;
+
+            if (size == 4) {
+                var i = Read<int>();
+                ptr = (IntPtr)i;
+            } else {
+                var i = Read<long>();
+                ptr = (IntPtr)i;
+            }
+
+            if (ptr == IntPtr.Zero) return (T)(object)null;
+
+            return (T)(object)ptr;
+        }
+
+        if (type == null) {
+            if (obj == null) {
+                type = typeof(T);
+            } else {
+                type = obj.GetType();
+            }
+        }
+
+        // Debug.Log($"Reading: {type}");
+
+        if (type.IsPrimitive) {
+            // Debug.Log("Reading Primitive");
+            return Parse<T>(objectType: type);
+        }
+
+        switch(type.FullName) {
+            case "UnityEngine.Vector3"    :
+            case "UnityEngine.Vector3Int" :
+            case "UnityEngine.Vector2"    :
+            case "UnityEngine.Vector2Int" :
+            case "UnityEngine.Vector4"    :
+            case "UnityEngine.Vector4Int" :
+            case "UnityEngine.Quaternion" :
+            case "UnityEngine.Matrix4x4"  :
+                // Debug.Log("Reading UNITY");
+                return Parse<T>(objectType: type);
+        }
+
+        if (type == typeof(string)) {
             var len = Parse<int>();
-            return (T)(object)Parse<string>(len);
+            return (T)(object)Parse<string>(len, objectType: typeof(string));
+        }
+
+        if (type.IsArray) {
+            // Debug.Log("Reading array");
+            var len         = Read<int>();
+            var nonEmptyLen = Read<int>();
+
+            var arr = Array.CreateInstance(type.GetElementType(), len);
+
+            for (var i = 0; i < nonEmptyLen; i++) {
+                var index = Read<int>();
+                var o     = Read<object>(null, type.GetElementType());
+
+                arr.SetValue(o, index);
+            }
+
+            return (T)(object)arr;
+        }
+
+        // Debug.Log("Reading Complex");
+
+        var meta = new TypeSaveMeta();
+
+        if (MetaData.ContainsKey(type)) {
+            meta = MetaData[type];
         } else {
-            return Parse<T>();
-        }
-    }
+            meta = ParseMeta(type);
 
-    public T[] ReadArray<T>(string name = null) {
-        var count = Read<int>();
-        var arr   = new T[count];
-
-        for(var i = 0; i < count; ++i) {
-            arr[i] = Read<T>();
+            MetaData.Add(type, meta);
         }
 
-        return arr;
-    }
+        if (obj == null) {
+            // if (createFunc == null)
+                obj = (T)Activator.CreateInstance(type);
+            // else
+                // obj = createFunc(this);
+        }
 
-    public void ReadObject(ISave obj, string name = null) {
-        obj.Load(this);
-    }
+        if (type.IsSubclassOf(typeof(MonoBehaviour))) {
+            var mono      = (MonoBehaviour)(object)obj;
+            var transform = mono.transform;
 
-    public T ReadValueType<T>(string name = null)
-    where T : ISave {
-        var ret = default(T);
+            transform.position   = Read<Vector3>();
+            transform.rotation   = Read<Quaternion>();
+            transform.localScale = Read<Vector3>();
+            mono.gameObject.SetActive(Read<bool>());
 
-        ret.Load(this);
+            var rb   = mono.GetComponent<Rigidbody>();
+            var rb2d = mono.GetComponent<Rigidbody2D>();
 
-        return ret;
+            if (rb) {
+                rb.position        = Read<Vector3>();
+                rb.velocity        = Read<Vector3>();
+                rb.angularVelocity = Read<Vector3>();
+                rb.mass            = Read<float>();
+                rb.drag            = Read<float>();
+                rb.angularDrag     = Read<float>();
+            }
+
+            if (rb2d) {
+                rb2d.position        = Read<Vector2>();
+                rb2d.velocity        = Read<Vector2>();
+                rb2d.angularVelocity = Read<float>();
+                rb2d.mass            = Read<float>();
+                rb2d.drag            = Read<float>();
+                rb2d.angularDrag     = Read<float>();
+            }
+        }
+
+        if (meta.Load != null) {
+            // Debug.LogWarning("Load function!");
+            meta.Load.Invoke(obj, _saveParams);
+            return obj;
+        }
+
+        foreach(var field in meta.Fields) {
+            // Debug.Log($"{field.Name}, {field.FieldType.ToString()}");
+            field.SetValue(obj, Read(field.GetValue(obj), field.FieldType));
+        }
+
+        return obj;
     }
 
     public T ReadEnum<T>(string name = null)
@@ -240,101 +413,9 @@ public unsafe class BinarySaveFile : ISaveFile {
         return default;
     }
 
-    public PackedEntity ReadPackedEntity(EntityManager em, string name = null) {
-        var ent = new PackedEntity();
-        var id  = Read<uint>();
-        ent.Type = ReadEnum<EntityType>(nameof(ent.Type));
-        ent.Alive = Read<bool>();
-        if(ent.Alive) {
-            ent.Entity = ReadEntity(null, em);
-        } else {
-            em.PushEmptyEntity(id);
-        }
-
-        return ent;
-    }
-
-    private Entity ReadEntity(string name, EntityManager em) {
-        Entity entity = null;
-        var handle = ReadValueType<EntityHandle>();
-        var type   = ReadEnum<EntityType>(nameof(entity.Type));
-        var flags  = ReadEnum<EntityFlags>(nameof(entity.Flags));
-        var link   = Read<string>(nameof(entity.Name));
-        var position = Read<Vector3>();
-        var orientation = Read<Quaternion>();
-        var scale = Read<Vector3>();
-        entity = em.RecreateEntity(link, position, orientation, scale, type, flags);
-        entity.Load(this);
-        Assert(handle.Id == entity.Handle.Id, $"Entity Id's are not identical while reading entity. Recreated Id: {entity.Handle.Id}, Saved Id: {handle.Id}");
-
-        return entity;
-    }
-
-    public T[] ReadObjectArray<T>(Func<T> createObjectFunc, string name = null)
-    where T : ISave {
-        var count = Read<int>();
-        var arr   = new T[count];
-
-        for(var i = 0; i < count; ++i) {
-            var obj = createObjectFunc();
-            ReadObject(obj);
-            arr[i] = obj;
-        }
-
-        return arr;
-    }
-
-    public T[] ReadUnmanagedObjectArray<T>(string name = null)
-    where T : unmanaged, ISave {
-        var count = Read<int>();
-        var arr   = new T[count];
-
-        for(var i = 0; i < count; ++i) {
-            arr[i] = ReadValueType<T>(null);
-        }
-
-        return arr;
-    }
-
-    public T[] ReadValueObjectArray<T>(string name = null)
-    where T : struct, ISave {
-        var count = Read<int>();
-        var arr = new T[count];
-
-        for(var i = 0; i < count; ++i) {
-            arr[i] = ReadValueType<T>(null);
-        }
-
-        return arr;
-    }
-
-    public NativeArray<T> ReadNativeObjectArray<T>(Allocator allocator, string name = null)
-    where T : unmanaged, ISave {
-        var count = Read<int>();
-        var arr = new NativeArray<T>(count, allocator);
-
-        for(var i = 0; i < count; ++i) {
-            arr[i] = ReadValueType<T>(null);
-        }
-
-        return arr;
-    }
-
-    public NativeArray<T> ReadNativeArray<T>(Allocator allocator, string name = null)
-    where T : unmanaged {
-        var count = Read<int>();
-        var arr   = new NativeArray<T>(count, allocator);
-
-        for(var i = 0; i < count; ++i) {
-            arr[i] = Read<T>();
-        }
-
-        return arr;
-    }
-
     // Parsing
     private UnmanagedArray<byte> Parse<T>(T value) {
-        var type = typeof(T).ToString();
+        var type = value.GetType().ToString();
 
         switch(type) {
             case "System.String" : {
@@ -560,8 +641,14 @@ public unsafe class BinarySaveFile : ISaveFile {
         return default;
     }
 
-    private T Parse<T>(int stringLength = 0, T defaultValue = default(T)) {
-        var type = typeof(T).ToString();
+    private T Parse<T>(int stringLength = 0, T defaultValue = default(T), Type objectType = null) {
+        string type;
+
+        if (objectType == null) {
+            type = typeof(T).ToString();
+        } else {
+            type = objectType.ToString();
+        }
 
         switch (type) {
             case "System.String" : {
@@ -799,5 +886,48 @@ public unsafe class BinarySaveFile : ISaveFile {
                 Data[idx] = value;
             }
         }
+    }
+
+    private static TypeSaveMeta ParseMeta(Type type) {
+        var meta = new TypeSaveMeta();
+
+        meta.Fields = type.GetFields(BindingFlags.Public    |
+                                                  BindingFlags.NonPublic |
+                                                  BindingFlags.Instance  |
+                                                  BindingFlags.FlattenHierarchy)
+                                       .Where((field) => {
+                                          return field.GetCustomAttribute(typeof(DontSaveAttribute)) == null &&
+                                                 field.Name != "m_value";
+                                       })
+                                       .ToArray();
+
+        var methods = type.GetMethods(BindingFlags.Public |
+                                      BindingFlags.NonPublic |
+                                      BindingFlags.Instance |
+                                      BindingFlags.IgnoreCase);
+
+        foreach(var method in methods) {
+            if (string.Compare(method.Name, "save", true) == 0) {
+                var pars = method.GetParameters();
+
+                if (pars.Length == 1 && pars[0].ParameterType == typeof(BinarySaveFile)) {
+                    meta.Save = method;
+                    break;
+                }
+            }
+        }
+
+        foreach(var method in methods) {
+            if (string.Compare(method.Name, "load", true) == 0) {
+                var pars = method.GetParameters();
+
+                if (pars.Length == 1 && pars[0].ParameterType == typeof(BinarySaveFile)) {
+                    meta.Load = method;
+                    break;
+                }
+            }
+        }
+
+        return meta;
     }
 }

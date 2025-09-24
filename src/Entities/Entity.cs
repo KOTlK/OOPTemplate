@@ -13,16 +13,17 @@ public enum EntityFlags
 }
 
 public enum EntityType {
+    None = 0
 }
 
-public class Entity : MonoBehaviour, ISave  {
-    public string        Name;
-    public EntityHandle  Handle;
-    public EntityFlags   Flags;
-    public EntityType    Type;
-    public EntityManager Em;
-    public World         World;
-    public bool          AutoBake;
+public class Entity : MonoBehaviour {
+               public string        Name;
+               public EntityHandle  Handle;
+               public EntityFlags   Flags;
+               public EntityType    Type;
+    [DontSave] public EntityManager Em;
+    [DontSave] public World         World;
+    [DontSave] public bool          AutoBake;
 
     public Vector3 Position {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -75,12 +76,6 @@ public class Entity : MonoBehaviour, ISave  {
         Destroy(gameObject);
     }
 
-    public virtual void Save(ISaveFile sf) {
-    }
-
-    public virtual void Load(ISaveFile sf) {
-    }
-
     public void MoveEntity(Vector3 position) {
         transform.position = position;
         Em.MovedEntities.Add(new MovedEntity{
@@ -98,7 +93,7 @@ public class Entity : MonoBehaviour, ISave  {
     }
 
     public (Vector3 velocity, int collisionCount)
-            MovePhysicsEntityNoGravity(Vector3 initialVelocity,
+            MovePhysicsEntityNoGravity(Vector3      initialVelocity,
                                        Quaternion   rotation,
                                        float        radius,
                                        RaycastHit[] hitBuffer,
