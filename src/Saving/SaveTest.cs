@@ -21,7 +21,7 @@ public class TestClass {
     public TestStruct Recursion;
 }
 
-[Version(7)]
+[Version(20)]
 public class SaveTest : MonoBehaviour {
     public EntityManager    Em;
     public int              IntData;
@@ -34,6 +34,8 @@ public class SaveTest : MonoBehaviour {
     public List<TestStruct> StructList  = new();
     public List<TestClass>  ClassList   = new();
     public TestEntity2      Entity;
+
+    [V(20)] public int AAAAAAAA = 20;
 
     private void Awake() {
         SaveSystem.Init();

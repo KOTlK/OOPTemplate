@@ -114,7 +114,7 @@ public unsafe class EntityManager : MonoBehaviour {
 
         var entitiesCount = sf.Read<uint>();
         Entities          = new PackedEntity[entitiesCount];
-        for(var i = 1; i < entitiesCount; ++i) {
+        for(uint i = 1; i < entitiesCount; ++i) {
             var pe = new PackedEntity();
 
             pe.Entity = null;
@@ -130,6 +130,8 @@ public unsafe class EntityManager : MonoBehaviour {
                                            sf.Read<EntityType>(),
                                            sf.Read<EntityFlags>());
                 sf.Read(pe.Entity);
+            } else {
+                PushEmptyEntity(i);
             }
 
             Entities[i] = pe;
@@ -180,7 +182,7 @@ public unsafe class EntityManager : MonoBehaviour {
         if((entity.Flags & EntityFlags.InsideHashTable) == EntityFlags.InsideHashTable) {
             if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
                 World.AddDynamicEntity(id, entity.transform.position);
-            } else if ((entity.Flags & EntityFlags.Static) == EntityFlags.Static) {
+            } else {
                 World.AddStaticEntity(id, entity.transform.position);
             }
         }
@@ -298,7 +300,7 @@ public unsafe class EntityManager : MonoBehaviour {
         if((obj.Flags & EntityFlags.InsideHashTable) == EntityFlags.InsideHashTable) {
             if((obj.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
                 World.AddDynamicEntity(id, position);
-            } else if ((obj.Flags & EntityFlags.Static) == EntityFlags.Static) {
+            } else {
                 World.AddStaticEntity(id, position);
             }
         }
@@ -353,7 +355,7 @@ public unsafe class EntityManager : MonoBehaviour {
         if((e.Flags & EntityFlags.InsideHashTable) == EntityFlags.InsideHashTable) {
             if((e.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
                 World.AddDynamicEntity(id, position);
-            } else if ((e.Flags & EntityFlags.Static) == EntityFlags.Static) {
+            } else {
                 World.AddStaticEntity(id, position);
             }
         }
@@ -398,7 +400,7 @@ public unsafe class EntityManager : MonoBehaviour {
             if((entity.Flags & EntityFlags.InsideHashTable) == EntityFlags.InsideHashTable) {
                 if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
                     World.RemoveDynamicEntity(entity.Handle.Id);
-                } else if((entity.Flags & EntityFlags.Static) == EntityFlags.Static) {
+                } else {
                     World.RemoveStaticEntity(entity.Handle.Id);
                 }
             }

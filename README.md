@@ -2,13 +2,21 @@
 Easy-to-use object oriented template for Unity.
 
 # Table of content
+- [OOP Template](#oop-template)
+- [Table of content](#table-of-content)
 - [Installation](#installation)
-- [EntitySystem](#entity-system)
+- [Entity System](#entity-system)
+  - [Entity](#entity)
+  - [EntityHandle](#entityhandle)
+  - [Entity Manager](#entity-manager)
 - [Saving](#saving)
 - [Config](#config)
+    - [How to use:](#how-to-use)
 - [Events](#events)
 - [Resource Management](#resource-management)
 - [Localization](#localization)
+    - [Editor overview](#editor-overview)
+    - [Locale](#locale)
 - [Coroutines](#coroutines)
 - [UIManager](#uimanager)
 - [ComponentSystem](#componentsystem)
@@ -53,70 +61,28 @@ The former returns [EntityHandle](#entityhandle), while the latter [Entity](#ent
 The `EntityManager`, as the name says, manages all the entities. It updates them when they need to, updates their positions inside spatial grid, moves them, etc...
 
 # Saving
-The template comes with build-in saving support.
-To save/load your type's data, implement [ISave](Template/src/Saving/ISave.cs) interface.
-Then, use one of the `SaveSystem`'s methods of saving.
-Depending on the method you choose `SaveSystem` will give you the [ISaveFile](Template/src/Saving/ISaveFile.cs) instance.
-[ISaveFile](Template/src/Saving/ISaveFile.cs) is an interface that provides write/read methods to store/load your data.
-The implementation depends on the `SaveType` you pass to `SaveSystem`'s Init function.
+The template comes with build-in saving support.  
+Before using `SaveSystem`, you should initialize it with `SaveSystem.Init()` method.  
+To initiate saving, call `SaveSystem.BeginSave()` function. It will return you an instance of [BinarySaveFile](src/Saving/BinarySaveFile.cs).  
+Save your objects via `BinarySaveFile.Write(obj)` method.  
+End saving, calling `SaveSystem.EndSave(string saveFileName)` function.  
 
-Before using `SaveSystem`, you should initialize it with `void Init(SaveType type = SaveType.Binary)` method, passing save type you want (either text of binary). There are no switching from one save type to another, use only one of them at a time.
-There are two ways of saving your data:
-1. Single `void Save(SaveFunc func, string name)` function.
-2. Two functions `ISaveFile BeginSave()` and `void EndSave(string name)`.
-
-For the first one you should provide the function that will save the data.
-Here is the signature of this function:
-``` C#
-delegate void SaveFunc(ISaveFile sf);
-```
-For the second way you don't need any function. Just get save file by calling `BeginSave()`, write your data into it, and call `EndSave(name)`.
-
-Same deal with loading data.
-```
-delegate void LoadFunc(ISaveFile sf);
-void Load(LoadFunc func, string fileName);
-ISaveFile BeginLoading(string fileName);
-void EndLoading();
-```
+Each field of an object will be saved automatically.  
+If you don't want field to be saved, mark it with [DontSave] attribute.  
+You can mark field with [`[V(uint version)]`](src/Saving/SaveAttributes.cs) attribute to provide field version. And you can mark type with [`[Version(uint version)]`](src/Saving/TypeVersion.cs) attribute to provide type's version.  
+If type's version is lower than the field's version, that means, that the field does not exist in the save file, thus it won't be loaded.  
+If you want manually save/load the type's data, you can create method with the name `Save`/`Load` that accepts [BinarySaveFile](src/Saving/BinarySaveFile.cs) as a parameter and write your saving/loading logic there. You don't need an interface or something else. You can see [EntityManager](src/Entities/EntityManager.cs) for an example.  
 
 If you want to execute some code after loading is complete, subscribe to `Action<ISaveFile> LoadingOver` event.
 
-### ⚠⚠⚠
-Be careful with loading binary data as it is implemented as simple array of bytes. So the order you save and load data matter. The load order should be the same as save order.
-If you make changes to your data and want to support previous save files, use [Version](Template/src/Saving/TypeVersion.cs) attribute and save/load your data, based on the version. Example:
-``` C#
-[Version(5)]
-public struct Data : ISave {
-    public int    Int;
-    public float  Float;
-    public double Double = 2323.2323d;
-
-    public void Save(ISaveFile sf) {
-        sf.Write(Int);
-        sf.Write(Float);
-        sf.Write(Double);
-    }
-
-    public void Load(ISaveFile sf) {
-        Int   = sf.Read<int>();
-        Float = sf.Read<float>();
-
-        if(this.GetVersion() > 3) {
-            Double = sf.Read<double>();
-        }
-    }
-}
-```
-
-Also, you can use `SaveFile[] GetAllSaves()` method to get all save files.
-You can always change the directory, where your save files stored, in [SaveSystem](Template/src/Saving/SaveSystem.cs).
+You can use `SaveSystem.GetAllSaves()` method to get all save files.
+You can always change the directory, where your save files stored, in [SaveSystem](src/Saving/SaveSystem.cs).
 
 # Config
-[Config](Template/src/Utility/Config.cs) is just a simple way of storing global config data in a single place.
+[Config](src/Utility/Config.cs) is just a simple way of storing global config data in a single place.
 It loads the data from a [config file](StreamingAssets/Config.cfg).
 ### How to use:
-Add the data you need into a [Config](Template/src/Utility/Config.cs) class.
+Add the data you need into a [Config](src/Utility/Config.cs) class.
 ``` C#
 public struct SomeData {
     public int   Int;
@@ -140,11 +106,11 @@ Int   4221
 Float 13.37
 ```
 
-Call `ParseVars()` function. All the additional information can be found in [Config.cs](Template/src/Utility/Config.cs) and [Config.cfg](StreamingAssets/Config.cfg) files.
+Call `ParseVars()` function. All the additional information can be found in [Config.cs](src/Utility/Config.cs) and [Config.cfg](StreamingAssets/Config.cfg) files.
 
 
 # Events
-[Events](Template/src/Events/Events.cs) contains general events and private events.
+[Events](src/Events/Events.cs) contains general events and private events.
 An example of private events can be Player events or Market events.
 First, you need to create an event type. It can be either struct or a class.
 ``` C#
@@ -177,7 +143,7 @@ To raise event, call `Events.Raise(event)` and pass instance of the event.
 Do not use it for processing input events, it's not made for it. Also it is <span style="color:rgb(255, 0, 0)">NOT</span> a replacement for C# events.
 
 # Resource Management
-Using the [ResourceManager](Template/src/Resource/ResourceManager.cs) you can load/unload/instantiate game resource.
+Using the [ResourceManager](src/Resource/ResourceManager.cs) you can load/unload/instantiate game resource.
 The template forces you to use AssetBundles for your assets pipeline.
 To build the bundles, use `Asset Bundles/Build Bundles` in Unity's menu.
 Unfortunately, you always have to rebuild your bundles, when any of the assets changes. Maybe later I will make partial assets rebuild.
@@ -235,7 +201,7 @@ void OnAssetsLoad() :
 Use `Localization/Editor` button to open localization editor.
 Inside this editor you can load/save/make new localization entries.
 The localization entry consist of identifier, tag and text.
-You can add new tags, by modifying `LocalizationTag` enum inside [Locale](Template/src/Localization/Locale.cs) file.
+You can add new tags, by modifying `LocalizationTag` enum inside [Locale](src/Localization/Locale.cs) file.
 ### Editor overview
 Pressing `New` button will open popup window.
 In this window, you describe localization entry.
@@ -253,9 +219,9 @@ The default path of localizations is: `StreamingAssets` directory.
 Using the search field, you can filter entries by identifier, tag or text.
 
 ### Locale
-Using [Locale](Template/src/Localization/Locale.cs) you can load the localization file, by calling `Locale.LoadLocalization(name)`. Name is just the name of file, without the extension.
+Using [Locale](src/Localization/Locale.cs) you can load the localization file, by calling `Locale.LoadLocalization(name)`. Name is just the name of file, without the extension.
 And get string by it's identifier. Use `Locale.Get(ident)` to do it.
-To help with identifiers, you have [LocalizedString](Template/src/Localization/LocalizedString.cs).
+To help with identifiers, you have [LocalizedString](src/Localization/LocalizedString.cs).
 It has custom property drawer. Add it to your class, copy the identifier of your string from editor, by clicking copy button, paste it, and the inspector will show you the string or an error if you made a mistake somewhere. Make sure to load the localization, using `Localization/Load English`.
 Use `LocalizedString.Get()` and `LocalizedString.Get(int id)` methods to get a string. The first method used, when you need only one string and the second one, when you need multiple strings.
 You can also subscribe to `Locale.LocalizationLoaded` event to update your text if localization changed.
@@ -309,7 +275,7 @@ You can see localization file examples inside `StreamingAssets/Localization` dir
 
 # Coroutines
 Works like Unity's coroutines, but don't need GameObject to run.
-Call `Coroutines.InitCoroutines()` in the initialization code to init the module. And `Coroutines.RunCoroutines()` somewhere in your update code ([here](Template/src/Main.cs)) to update coroutines. Don't forget to call it, if you use `ResourceManager`, it depends on coroutines.
+Call `Coroutines.InitCoroutines()` in the initialization code to init the module. And `Coroutines.RunCoroutines()` somewhere in your update code ([here](src/Main.cs)) to update coroutines. Don't forget to call it, if you use `ResourceManager`, it depends on coroutines.
 Unity's build-in coroutines are not supported (WaitForSeconds etc.).
 Start coroutine with `Coroutines.BeginCoroutine()`. This function will return you `CoroutineHandle`. Which you can use to stop coroutine, using `Coroutines.EndCoroutine(handle)` and get coroutine's status with `Coroutines.GetCoroutineStatus(handle)`.
 The naming differs from Unity's, because c# static dispatch can't handle it 🙂.
@@ -360,11 +326,11 @@ Functions with string as first argument are loading asset from `ResourceManager`
 before making an element.
 
 To bake already existing element, use `BakeUIElement` function or
-attach [UIBaker](Template/src/ui/UIBaker.cs) component to the element and it will automatically bake
+attach [UIBaker](src/ui/UIBaker.cs) component to the element and it will automatically bake
 the element on Start.
 
 To bind already existing element with a name, use `BindUIElement` function or
-attach [UIBinder](Template/src/ui/UIBinder.cs) component to the element and it will automatically bind
+attach [UIBinder](src/ui/UIBinder.cs) component to the element and it will automatically bind
 the element on Start.
 
 To make unique ui element, use `MakeUniqueUI<T>`.

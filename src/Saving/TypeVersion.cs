@@ -38,7 +38,7 @@ public static class TypeVersion {
     private static Dictionary<string, uint> Versions;
     private static StringBuilder            Sb;
 
-    private static string Path = $"{Application.streamingAssetsPath}/TypeVersions.version";
+    private static string Path = $"{Application.persistentDataPath}/TypeVersions.version";
 
     public static void Init() {
         Versions = new();
@@ -124,6 +124,17 @@ public static class TypeVersion {
     public static uint GetVersion<T>() {
         Assert(typeof(T).GetCustomAttribute(typeof(VersionAttribute)) != null, $"Type \"{typeof(T).ToString()}\" does not have \"Version\" attribute.");
         var name = typeof(T).FullName;
+
+        if(Versions.ContainsKey(name) == false) {
+            return 0;
+        }
+
+        return Versions[name];
+    }
+
+    public static uint GetVersion(Type t) {
+        Assert(t != null, "Cannot get version for null");
+        var name = t.FullName;
 
         if(Versions.ContainsKey(name) == false) {
             return 0;

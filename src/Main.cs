@@ -15,14 +15,13 @@ public class Main : MonoBehaviour {
     private void Awake() {
         Config.ParseVars();
         Locale.LoadLocalization(Localization);
-        InitContext();
+        InitContext(EntityManager);
         Coroutines.InitCoroutines();
         TaskRunner = new TaskRunner();
         Events.Init();
         ResourceManager.Initialize();
         SaveSystem.Init();
 
-        Singleton<EntityManager>.Create(EntityManager);
         UIManager.Init(UIParent, UIParent.transform);
         UIManager.RegisterDependencies(EntityManager);
 

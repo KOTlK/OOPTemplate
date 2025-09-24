@@ -192,49 +192,6 @@ public unsafe class BinarySaveFile {
         }
     }
 
-    public void WriteEnum(Enum e, string name = null) {
-        var type = Enum.GetUnderlyingType(e.GetType()).ToString();
-
-        switch(type) {
-            case "System.Int32" : {
-                Write((int)Convert.ChangeType(e, typeof(int)));
-            }
-            break;
-            case "System.UInt32" : {
-                Write((uint)Convert.ChangeType(e, typeof(uint)));
-            }
-            break;
-            case "System.Int64" : {
-                Write((long)Convert.ChangeType(e, typeof(long)));
-            }
-            break;
-            case "System.UInt64" : {
-                Write((ulong)Convert.ChangeType(e, typeof(ulong)));
-            }
-            break;
-            case "System.Int16" : {
-                Write((short)Convert.ChangeType(e, typeof(short)));
-            }
-            break;
-            case "System.UInt16" : {
-                Write((ushort)Convert.ChangeType(e, typeof(ushort)));
-            }
-            break;
-            case "System.Byte" : {
-                Write((byte)Convert.ChangeType(e, typeof(byte)));
-            }
-            break;
-            case "System.SByte" : {
-                Write((sbyte)Convert.ChangeType(e, typeof(sbyte)));
-            }
-            break;
-            default : {
-                Debug.LogError($"Can't convert from {type} to any proper type");
-            }
-            break;
-        }
-    }
-
     public T Read<T>(T obj = default(T), Type type = null) {
         if (type == typeof(object)) {
             var size = sizeof(IntPtr);
@@ -316,10 +273,7 @@ public unsafe class BinarySaveFile {
         }
 
         if (obj == null) {
-            // if (createFunc == null)
-                obj = (T)Activator.CreateInstance(type);
-            // else
-                // obj = createFunc(this);
+            obj = (T)Activator.CreateInstance(type);
         }
 
         if (type.IsSubclassOf(typeof(MonoBehaviour))) {
@@ -361,56 +315,17 @@ public unsafe class BinarySaveFile {
 
         foreach(var field in meta.Fields) {
             // Debug.Log($"{field.Name}, {field.FieldType.ToString()}");
+            var version = TypeVersion.GetVersion(type);
+            var vattr   = field.GetCustomAttribute(typeof(VAttribute));
+
+            if (vattr != null) {
+                if (version < ((VAttribute)vattr).Version) continue;
+            }
+
             field.SetValue(obj, Read(field.GetValue(obj), field.FieldType));
         }
 
         return obj;
-    }
-
-    public T ReadEnum<T>(string name = null)
-    where T : Enum {
-        var type = Enum.GetUnderlyingType(typeof(T)).ToString();
-
-        switch(type) {
-            case "System.Int32" : {
-                var val = Read<int>();
-                return (T)Enum.ToObject(typeof(T), val);
-            }
-            case "System.UInt32" : {
-                var val = Read<uint>();
-                return (T)Enum.ToObject(typeof(T), val);
-            }
-            case "System.Int64" : {
-                var val = Read<long>();
-                return (T)Enum.ToObject(typeof(T), val);
-            }
-            case "System.UInt64" : {
-                var val = Read<ulong>();
-                return (T)Enum.ToObject(typeof(T), val);
-            }
-            case "System.Int16" : {
-                var val = Read<short>();
-                return (T)Enum.ToObject(typeof(T), val);
-            }
-            case "System.UInt16" : {
-                var val = Read<ushort>();
-                return (T)Enum.ToObject(typeof(T), val);
-            }
-            case "System.Byte" : {
-                var val = Read<byte>();
-                return (T)Enum.ToObject(typeof(T), val);
-            }
-            case "System.SByte" : {
-                var val = Read<sbyte>();
-                return (T)Enum.ToObject(typeof(T), val);
-            }
-            default : {
-                Debug.LogError($"Can't read enum with underlying type: {type}");
-            }
-            break;
-        }
-
-        return default;
     }
 
     // Parsing
@@ -930,4 +845,88 @@ public unsafe class BinarySaveFile {
 
         return meta;
     }
+
+    /*
+    Don't need it, but it's boilerplate code and I don't want to rewrite it again if I need it somewhere else.
+
+    public void WriteEnum(Enum e, string name = null) {
+        var type = Enum.GetUnderlyingType(e.GetType()).ToString();
+
+        switch(type) {
+            case "System.Int32" :
+                Write((int)Convert.ChangeType(e, typeof(int)));
+            break;
+            case "System.UInt32" :
+                Write((uint)Convert.ChangeType(e, typeof(uint)));
+            break;
+            case "System.Int64" :
+                Write((long)Convert.ChangeType(e, typeof(long)));
+            break;
+            case "System.UInt64" :
+                Write((ulong)Convert.ChangeType(e, typeof(ulong)));
+            break;
+            case "System.Int16" :
+                Write((short)Convert.ChangeType(e, typeof(short)));
+            break;
+            case "System.UInt16" :
+                Write((ushort)Convert.ChangeType(e, typeof(ushort)));
+            break;
+            case "System.Byte" :
+                Write((byte)Convert.ChangeType(e, typeof(byte)));
+            break;
+            case "System.SByte" :
+                Write((sbyte)Convert.ChangeType(e, typeof(sbyte)));
+            break;
+            default :
+                Debug.LogError($"Can't convert from {type} to any proper type");
+            break;
+        }
+    }
+
+    public T ReadEnum<T>(string name = null)
+    where T : Enum {
+        var type = Enum.GetUnderlyingType(typeof(T)).ToString();
+
+        switch(type) {
+            case "System.Int32" : {
+                var val = Read<int>();
+                return (T)Enum.ToObject(typeof(T), val);
+            }
+            case "System.UInt32" : {
+                var val = Read<uint>();
+                return (T)Enum.ToObject(typeof(T), val);
+            }
+            case "System.Int64" : {
+                var val = Read<long>();
+                return (T)Enum.ToObject(typeof(T), val);
+            }
+            case "System.UInt64" : {
+                var val = Read<ulong>();
+                return (T)Enum.ToObject(typeof(T), val);
+            }
+            case "System.Int16" : {
+                var val = Read<short>();
+                return (T)Enum.ToObject(typeof(T), val);
+            }
+            case "System.UInt16" : {
+                var val = Read<ushort>();
+                return (T)Enum.ToObject(typeof(T), val);
+            }
+            case "System.Byte" : {
+                var val = Read<byte>();
+                return (T)Enum.ToObject(typeof(T), val);
+            }
+            case "System.SByte" : {
+                var val = Read<sbyte>();
+                return (T)Enum.ToObject(typeof(T), val);
+            }
+            default : {
+                Debug.LogError($"Can't read enum with underlying type: {type}");
+            }
+            break;
+        }
+
+        return default;
+    }
+    */
 }

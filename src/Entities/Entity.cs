@@ -2,14 +2,14 @@ using UnityEngine;
 using System;
 using System.Runtime.CompilerServices;
 
+using static Context;
+
 [Flags]
-public enum EntityFlags
-{
+public enum EntityFlags {
     None            = 0,
-    Dynamic         = 1 << 1,
-    Static          = 1 << 2,
-    InsideHashTable = 1 << 3,
-    UpdatePhysics   = 1 << 4,
+    Dynamic         = 0x1,
+    InsideHashTable = 0x2,
+    UpdatePhysics   = 0x4,
 }
 
 public enum EntityType {
@@ -53,9 +53,7 @@ public class Entity : MonoBehaviour {
 
     private void Awake() {
         if(AutoBake) {
-            if(Singleton<EntityManager>.Exist) {
-                Singleton<EntityManager>.Instance.BakeEntity(this);
-            }
+            GetGameplayEntityManager().BakeEntity(this);
         }
     }
 
