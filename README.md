@@ -11,6 +11,7 @@
 **If something above triggers you, close the page, don't waste your time.**
 
 # Limitations
+**Unity version: 6.3 LTS(6000.3.4f1)**  
 Medium and hard IL2CPP stripping levels kills everything. It can be di container issue (as it affects only the things that are instantiated by it), but, thanks to Unity, I don't even know what exactly getting stripped out.
 
 <details>
