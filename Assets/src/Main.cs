@@ -14,8 +14,6 @@ public static class Main {
     public static string UIParentLocation    = "GlobalCanvas";
     public static string EventSystemLocation = "GlobalEventSystem";
 
-    public static EntityManager Em;
-
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     public static void Initialize() {
         Config.ParseVars();
@@ -23,7 +21,6 @@ public static class Main {
         AssetManager.Init();
         Events.Init();
         SaveSystem.Init();
-        Em = new();
 
         // Inject new system
         var defaultLoop = PlayerLoop.GetDefaultPlayerLoop();

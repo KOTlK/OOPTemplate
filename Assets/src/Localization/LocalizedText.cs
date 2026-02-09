@@ -3,19 +3,16 @@ using UnityEngine;
 
 using static Locale;
 
-public class LocalizedText : MonoBehaviour {
+public class LocalizedText : UIElement {
     public int      Ident;
     public TMP_Text Text;
 
-    private void Awake() {
+    public override void OnCreate() {
         LocalizationLoaded += UpdateText;
-    }
-
-    private void Start() {
         UpdateText();
     }
 
-    private void OnDestroy() {
+    public override void Destroy() {
         LocalizationLoaded -= UpdateText;
     }
 

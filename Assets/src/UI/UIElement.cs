@@ -81,11 +81,20 @@ public class UIElement : Entity {
         }
     }
 
+    public virtual void Hide() {
+        gameObject.SetActive(false);
+    }
+
+    public virtual void Show() {
+        gameObject.SetActive(true);
+    }
+
     [Inject]
     protected override void Inject(EntityManager em) {
         // Do not inject default entity manager.
     }
 
+    // Hask to have UIEntityManager instead of EntityManager
     [Inject]
     private void Inject(UIEntityManager em) {
         Debug.Log("Inject into ui element");

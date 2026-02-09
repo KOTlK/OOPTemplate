@@ -49,8 +49,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Game::UI
   AssetAddress: UIParent
-  Flags: 0
-  Type: 3
+  Flags: 1
+  Type: 1
   AutoBake: 0
   Transform: {fileID: 2701791784258595956}
   Canvas: {fileID: 0}

@@ -8,6 +8,7 @@ using Reflex.Attributes;
 public enum EntityFlags : uint {
     None            = 0,
     Dynamic         = 0x1,
+    Temp            = 0x2, // Replace it with new flag. Do not remove it, because Unity will fuck everything up.
 }
 
 public class Entity : MonoBehaviour {

@@ -1,10 +1,28 @@
 # OOP Template
-Easy-to-use object oriented template for Unity.
+**Template for Unity, that focus on simplicity.**
 
-# Table of content
+# ⚠⚠⚠ Epilepsy Warning ⚠⚠⚠
+**If you think incapsulation (hide everything) is the best thing in the world, close the page and contact your doctor.**  
+**If you think SOLID is a great thing and everyone should follow it (especially S part), close the page.**  
+**If you are clean code guru, close the page.**  
+**If you prefere complexity over simplicity, close the page.**
+**There is no MVC/MVP/MVVM or any other stupid web pattern. If you like it, I don't care.**  
+**Entity System is NOT ECS.**  
+**If something above triggers you, close the page, don't waste your time.**
+
+# Limitations
+Medium and hard IL2CPP stripping levels kills everything. It can be di container issue (as it affects only the things that are instantiated by it), but, thanks to Unity, I don't even know what exactly getting stripped out.
+
+<details>
+<summary> Table of content </summary>
+
 - [OOP Template](#oop-template)
-- [Table of content](#table-of-content)
+- [⚠⚠⚠ Epilepsy Warning ⚠⚠⚠](#-epilepsy-warning-)
+- [Limitations](#limitations)
 - [Installation](#installation)
+- [Dependency Injection](#dependency-injection)
+- [Entry Point](#entry-point)
+- [Game Systems](#game-systems)
 - [Entity System](#entity-system)
   - [Entity](#entity)
   - [EntityHandle](#entityhandle)
@@ -13,76 +31,91 @@ Easy-to-use object oriented template for Unity.
 - [Config](#config)
     - [How to use:](#how-to-use)
 - [Events](#events)
-- [Resource Management](#resource-management)
+- [Asset Management](#asset-management)
 - [Localization](#localization)
     - [Editor overview](#editor-overview)
     - [Locale](#locale)
-- [Coroutines](#coroutines)
-- [UIManager](#uimanager)
+- [UI](#ui)
 - [ComponentSystem](#componentsystem)
-
+</details>
 
 # Installation
-    Just copy everything into Assets directory.
+    Press big green "Use this template" button on github or just clone the repository.
+
+# Dependency Injection
+[Reflex](https://github.com/gustavopsantos/Reflex) used here as di container.  
+Use `Reflex.Attributes.Inject` attribute to inject dependencies.  
+Dependencies will be injected into entities created with `EntityManager` automatically.  
+For entities use only properties/field injection.  
+You should always have game object with `ContainerScope` component on it in your scene, or the dependencies will not be injected into entitie's or MonoBehaviour's.  
+Install global bindigs in `InstallBindings` method at [Main](Assets/src/Main.cs).  
+To use scene installers, attach installer components to a gameobject with `ContainerScope` component on it.  
+
+# Entry Point
+[Main](Assets/src/Main.cs) is a game's entry point.  
+It initializes after the first scene loaded and before any `Awake` methods called.  
+Here you can create and initialize your game systems, bind them to di container, etc.  
+`UpdateFunc` is main update function. It is called before any `MonoBehaviour.Update()` function called. You can add anything you want to it.  
+[Initialization](Assets/src/Initialization.cs) is script, that should always be on the initialization scene. It should be used to initialize anything on the first `Awake` call. For now it instantiates ui on canvas. After initialization completed, it raises `InitializationCompleted` event.
+
+# Game Systems
+To create custom game system, inherit from [GameSystem](Assets/src/Game/GameSystem.cs) class and override it's methods for your need.  
+Register your system in [Main.cs](Assets/src/Main.cs);
+To register system, bind it to the container after `Game` binding.  
+To obtain any system, call `GetSystem<T>()` on `Game` instance. It's better not to inject system into other system via di container as it handles cross references badly. Game instance will always be injected into the system automatically.  
 
 # Entity System
 
 ## Entity
-Game entities should inherit base `Entity` class.
-Each entity contains `EntityManager` it was created with inside `Em` field.
-The entities does not use Unity's Update, FixedUpdate, etc. methods.
-Override `OnCreate` method to do something, when object gets created.
-Override `OnBaking` method if your entity placed as scene object and needs `OnCreate` functionality.
-Override `Destroy` method to execute code when the entity gets destroyed.
-To update entity each frame, override `Execute` method. It is the same as writing Unity's `Update` function.
-To get `FixedUpdate` functionality, override `UpdatePhysics` method.
-To move entity, use `MoveEntity` method and pass the new position. You need to do it if you want your entity to be correctly updated inside spatial grid.
+Game entities should inherit base `Entity` class. 
+Each entity contains `EntityManager` it was created with inside `Em` field.  
+Eentities does not use Unity's Update method, they are updated via `EntityManager`. You can use any Unity method if you need it.  
+Override `OnCreate` method to do something, when object gets created.  
+Override `OnBaking` method if your entity placed as scene object and needs `OnCreate` functionality.  
+Override `Destroy` method to execute code when the entity gets destroyed.  
+To update entity each frame, override `Execute` method. It is the same as writing Unity's `Update` function.  
 `Entity` also contains some helper functions and properties:
 - `Position, Rotation, Scale, ObjectToWorld` to access it's position, rotation, localScale and local to world matrix.
-- `QueryNearbyEntities` to query entities in certain radius from the entity. Spatial grid, mentioned above, used for it.
 - `GetEntity` and `GetEntity<T>` to get entity from the [EntityManager](#entity-manager) your entity was created with.
 - `DestroyThisEntity` and `DestroyEntity` to destroy your entity or some other entity.
 - `Save` and `Load` methods to save/load your entity (more about it in [Saving](#saving) topic).
 
 ## EntityHandle
-`EntityHandle` is a struct to get access to entities instead of doing it standard way (using references).
-To get instance of the entity, use Entity's helper functions or `EntityManager.GetEntity` methods.
-Neither of this methods return only reference. Instead they return boolean value, indicating if entity is alive and a reference.
+`EntityHandle` is a struct to get access to entities instead of doing it standard way (references).  
+To get entity instance, use Entity's helper functions or `EntityManager.GetEntity` methods.  
 Always check if entity is alive:
 ``` C#
 if(GetEntity(handle, out var entity) ...);
 ```
-Using `EntityHandle` instead of simply references, helps with saving the game and with forgetting to check if referenced entity is not null.
 
 ## Entity Manager
 All your game entities should be created and destroyed with `EntityManager`.
-For this purposes, it has `CreateEntity` and `CreateEntityReturnReference` methods.
-The former returns [EntityHandle](#entityhandle), while the latter [Entity](#entity). For most cases you need only the first one.
-The `EntityManager`, as the name says, manages all the entities. It updates them when they need to, updates their positions inside spatial grid, moves them, etc...
+For this purposes, it has `CreateEntity<T>` method. You should pass `AssetReference`, name of the Addressable asset or addressable guid of the asset to the method.  
+Ireturns [EntityHandle](#entityhandle) and the reference to the entity.
 
 # Saving
 The template comes with build-in saving support.  
 Before using `SaveSystem`, you should initialize it with `SaveSystem.Init()` method.  
-To initiate saving, call `SaveSystem.BeginSave()` function. It will return you an instance of [BinarySaveFile](src/Saving/BinarySaveFile.cs).  
+To initiate saving, call `SaveSystem.BeginSave()` function. It will return you an instance of [BinarySaveFile](Assets/src/Saving/BinarySaveFile.cs).  
 Save your objects via `BinarySaveFile.Write(obj)` method.  
 End saving, calling `SaveSystem.EndSave(string saveFileName)` function.  
 
 Each field of an object will be saved automatically.  
 If you don't want field to be saved, mark it with [DontSave] attribute.  
-You can mark field with [`[V(uint version)]`](src/Saving/SaveAttributes.cs) attribute to provide field version. And you can mark type with [`[Version(uint version)]`](src/Saving/TypeVersion.cs) attribute to provide type's version.  
+You can mark field with [`[V(uint version)]`](Assets/src/Saving/SaveAttributes.cs) attribute to provide field version. And you can mark type with [`[Version(uint version)]`](Assets/src/Saving/TypeVersion.cs) attribute to provide type's version.  
 If type's version is lower than the field's version, that means, that the field does not exist in the save file, thus it won't be loaded.  
-If you want manually save/load the type's data, you can create method with the name `Save`/`Load` that accepts [BinarySaveFile](src/Saving/BinarySaveFile.cs) as a parameter and write your saving/loading logic there. You don't need an interface or something else. You can see [EntityManager](src/Entities/EntityManager.cs) for an example.  
+If you want manually save/load the type's data, you can create method with the name `Save`/`Load` that accepts [BinarySaveFile](Assets/src/Saving/BinarySaveFile.cs) as a parameter and write your saving/loading logic there. You don't need an interface or something else. You can see [EntityManager](Assets/src/Entities/EntityManager.cs) for an example.  
 
 If you want to execute some code after loading is complete, subscribe to `Action<ISaveFile> LoadingOver` event.
 
 You can use `SaveSystem.GetAllSaves()` method to get all save files.
-You can always change the directory, where your save files stored, in [SaveSystem](src/Saving/SaveSystem.cs).
+You can always change the directory, where your save files stored, in [SaveSystem](Assets/src/Saving/SaveSystem.cs).
 
 # Config
-[Config](src/Utility/Config.cs) is just a simple way of storing global config data in a single place.
-It loads the data from a [config file](StreamingAssets/Config.cfg).
+[Config](Assets/src/Utility/Config.cs) is just a simple way of storing global config data in a single place.
+It loads the data from a [config file](Assets/StreamingAssets/Config.cfg).
 ### How to use:
-Add the data you need into a [Config](src/Utility/Config.cs) class.
+Add the data you need into a [Config](Assets/src/Utility/Config.cs) class.
 ``` C#
 public struct SomeData {
     public int   Int;
@@ -93,6 +126,7 @@ public static class Config {
     public SomeData Data;
     public Vector3  Vector;
     public string   Text;
+    ... the rest of the file
 }
 ```
 
@@ -106,13 +140,14 @@ Int   4221
 Float 13.37
 ```
 
-Call `ParseVars()` function. All the additional information can be found in [Config.cs](src/Utility/Config.cs) and [Config.cfg](StreamingAssets/Config.cfg) files.
+Call `ParseVars()` function (called automatically in [Main](Assets/src/Main.cs). All the additional information can be found in [Config.cs](Assets/src/Utility/Config.cs) and [Config.cfg](Assets/StreamingAssets/Config.cfg) files.
 
 
 # Events
-[Events](src/Events/Events.cs) contains general events and private events.
-An example of private events can be Player events or Market events.
-First, you need to create an event type. It can be either struct or a class.
+[Events](Assets/src/Events/Events.cs) is an event system.  
+It contains general events and private events.  
+An example of private events can be Player events or Market events.  
+First, you need to create an event type. It can be either struct or a class.  
 ``` C#
 public struct SomeEvent {
     public int a;
@@ -138,70 +173,20 @@ Events.SubGeneral<SomeEvent2>(ProcessEvent3); // can't do this
 Events.RaiseGeneral(new SomeEvent2()); // Only ProcessEvent2 will be called.
 ```
 
-As you can see in the code above, you can subscribe to event using `Events.SubGeneral<EventType>(method)` or `Events.SubPrivate<EventType>(name, method)` and unsubscribe, using `Unsub...` functions.
-To raise event, call `Events.Raise(event)` and pass instance of the event.
-Do not use it for processing input events, it's not made for it. Also it is <span style="color:rgb(255, 0, 0)">NOT</span> a replacement for C# events.
+As you can see in the code above, you can subscribe to event using `Events.SubGeneral<EventType>(method)` or `Events.SubPrivate<EventType>(name, method)` and unsubscribe, using `Unsub...` functions.  
+To raise event, call `Events.Raise(event)` and pass instance of the event.  
 
-# Resource Management
-Using the [ResourceManager](src/Resource/ResourceManager.cs) you can load/unload/instantiate game resource.
-The template forces you to use AssetBundles for your assets pipeline.
-To build the bundles, use `Asset Bundles/Build Bundles` in Unity's menu.
-Unfortunately, you always have to rebuild your bundles, when any of the assets changes. Maybe later I will make partial assets rebuild.
-When you call `ResourceManager.LoadAsset(name)`/`ResourceManager.LoadBundle(name)`, or it's async versions, it will return you the handle to an asset. Using this handle, you can:
- - Instantiate the object with `Instantiate<T>(...)` methods.
- - Get the loading progress of the asset/bundle with `float GetLoadingProgress(AssetHandle handle)` method. The progress is in [0-1] range. Note, that, if loading operation progress equals to 1, but the onLoad action is not yet performed, you should wait for that action. Unity doing it's dirty work.
-
-Make sure you always load bundle, containing the asset, before loading an asset.
-Typical use case:
-``` C#
-class Main :
-
-void Start() :
-    ResourceManager.Initialize();
-    ResourceManager.LoadBundle("playables");
-    ResourceManager.LoadBundle("music");
-    ResourceManager.LoadBundle("sfx");
-
-    var handle = ResourceManager.LoadAsset("player");
-
-    var player = ResourceManager.Instantiate<Player>(handle, Vector3.zero, Quaternion.identity);
-    player.DoStuff();
-```
-
-or you can use [EntityManager](#entity-manager) instead of managing assets:
-``` C#
-class Main :
-EntityManager Em;
-
-void Start() :
-    ResourceManager.Initialize();
-    ResourceManager.LoadBundle("playables");
-    ResourceManager.LoadBundle("music");
-    ResourceManager.LoadBundle("sfx");
-
-    player = Em.CreateEntity<Player>("player", Vector3.zero, Quaternion.identity);
-    player.DoStuff();
-```
-
-Multiple Assets loading:
-``` C#
-using static ResourceManager;
-
-Handle = LoadBundles(OnBundleLoad, "playables", "music", "environment")
-
-void OnBundlesLoad() :
-    Handle = LoadAssets(OnAssetsLoad, "player", "battle_music", "chair");
-
-void OnAssetsLoad() :
-    instantiate assets
-
-```
+# Asset Management
+Using the [AssetManager](Assets/src/Resource/AssetManager.cs) you can load/unload/instantiate game assets.  
+It's a simple wrapper of Addressables that makes loading synchronous.  
+The `EntityManager` will use AssetManager to load and instantiate entities.  
+All entities instantiated synchronous, but you can instantiate their meshes or materials async, using [LoadMeshOnInstantiate](Assets/src/Utility/LoadMeshOnInstantiate.cs) or [LoadMeshOnInstantiate](Assets/src/Utility/LoadMeshOnInstantiate.cs). Just add this components to the object, that contains `MeshFilter` or `Renderer` component and assign reference to mesh/material.  
 
 # Localization
 Use `Localization/Editor` button to open localization editor.
 Inside this editor you can load/save/make new localization entries.
 The localization entry consist of identifier, tag and text.
-You can add new tags, by modifying `LocalizationTag` enum inside [Locale](src/Localization/Locale.cs) file.
+You can add new tags, by modifying `LocalizationTag` enum inside [Locale](Assets/src/Localization/Locale.cs) file.
 ### Editor overview
 Pressing `New` button will open popup window.
 In this window, you describe localization entry.
@@ -219,14 +204,15 @@ The default path of localizations is: `StreamingAssets` directory.
 Using the search field, you can filter entries by identifier, tag or text.
 
 ### Locale
-Using [Locale](src/Localization/Locale.cs) you can load the localization file, by calling `Locale.LoadLocalization(name)`. Name is just the name of file, without the extension.
-And get string by it's identifier. Use `Locale.Get(ident)` to do it.
-To help with identifiers, you have [LocalizedString](src/Localization/LocalizedString.cs).
-It has custom property drawer. Add it to your class, copy the identifier of your string from editor, by clicking copy button, paste it, and the inspector will show you the string or an error if you made a mistake somewhere. Make sure to load the localization, using `Localization/Load English`.
+Using [Locale](Assets/src/Localization/Locale.cs) you can load the localization file, by calling `Locale.LoadLocalization(name)`. Name is just the name of file, without the extension.  
+And get string by it's identifier. Use `Locale.Get(ident)` to do it.  
+To help with identifiers, you have [LocalizedString](Assets/src/Localization/LocalizedString.cs).  
+It has custom property drawer. Add it to your class, copy the identifier of your string from editor, by clicking copy button, paste it, and the inspector will show you the string or an error if you made a mistake somewhere. Make sure to load the localization, using `Localization/Load English`.  
 Use `LocalizedString.Get()` and `LocalizedString.Get(int id)` methods to get a string. The first method used, when you need only one string and the second one, when you need multiple strings.
-You can also subscribe to `Locale.LocalizationLoaded` event to update your text if localization changed.
+You can also subscribe to `Locale.LocalizationLoaded` event to update your text if localization changed.  
+Localization files should always be in `StreamingAssets` directory (engine and build).  
 
-Here is working code sample:
+Here is code sample:
 ``` C#
 using UnityEngine;
 using TMPro;
@@ -271,134 +257,44 @@ public class Dialogue : MonoBehaviour {
 
 Inside [Prefabs](Prefabs/UI) directory located `LocalizedText` file, simple wrapper on TMP_Text, use it if you need.
 
-You can see localization file examples inside `StreamingAssets/Localization` directory.
+You can see localization file examples inside `Assets/StreamingAssets/Localization` directory.
 
-# Coroutines
-Works like Unity's coroutines, but don't need GameObject to run.
-Call `Coroutines.InitCoroutines()` in the initialization code to init the module. And `Coroutines.RunCoroutines()` somewhere in your update code ([here](src/Main.cs)) to update coroutines. Don't forget to call it, if you use `ResourceManager`, it depends on coroutines.
-Unity's build-in coroutines are not supported (WaitForSeconds etc.).
-Start coroutine with `Coroutines.BeginCoroutine()`. This function will return you `CoroutineHandle`. Which you can use to stop coroutine, using `Coroutines.EndCoroutine(handle)` and get coroutine's status with `Coroutines.GetCoroutineStatus(handle)`.
-The naming differs from Unity's, because c# static dispatch can't handle it 🙂.
+# UI
+[UIEntityManager](Assets/src/UI/UIEntityManager.cs) is entity manager that you should use to instantiate [UIElement](Assets/src/UI/UIelement.cs)'s.  
+It's same as [EntityManager](#entity-manager), but handles ui entities.  
+To connect game logic and ui, use [Events](#events). Don't use fucking mvc.  
+Here is an example of how simple it can be:
+``` c#
+public class Unit : Entity {
+    public Side Side;
 
-``` C#
-using static Coroutines;
-
-public CoroutineHandle Handle;
-
-public void Start() {
-    Handle = BeginCoroutine(CustomCoroutine(10f, 20));
-}
-
-public void Update() {
-    if (Input.GetKeyDown(KeyCode.Space)) {
-        EndCoroutine(Handle);
+    public void Die(CauseOfDeath causeOfDeath) {
+        var evnt = new UnitDiedEvent();
+        evnt.CauseOfDeath = causeOfDeath;
+        evnt.Entity = Handle;
+        evnt.Side = Side;
+        Events.RaisePrivate<UnitDiedEvent>("units", evnt);
     }
 }
 
-private IEnumerator CustomCoroutine(float wait, int countTo) {
-    Debug.Log("Enter");
-
-    var i = 0;
-
-    while(i < countTo) {
-        Debug.Log("Counting");
-        i++;
+public class PlayerUnitScreen : UIElement {
+    public override void OnBecameDynamic() {
+        Events.SubPrivate<UnitDiedEvent>("units", OnUnitDeath);
     }
 
-    Debug.Log("Counted");
-
-    Debug.Log("Waiting");
-
-    yield return Wait(wait);
-
-    Debug.Log("Done");
-}
-```
-
-# UIManager
-Before using the module, initialize it with `Init(canvas, parent)`
-by default parent is canvas.  
-Configure UI update frequency by changing `UIFps` field.  
-Register dependencies with `RegisterDependencies` or `RegisterDependency` functions.
-
-To create ui elements, use `MakeUIElement` functions.
-Functions with string as first argument are loading asset from `ResourceManager`
-before making an element.
-
-To bake already existing element, use `BakeUIElement` function or
-attach [UIBaker](src/ui/UIBaker.cs) component to the element and it will automatically bake
-the element on Start.
-
-To bind already existing element with a name, use `BindUIElement` function or
-attach [UIBinder](src/ui/UIBinder.cs) component to the element and it will automatically bind
-the element on Start.
-
-To make unique ui element, use `MakeUniqueUI<T>`.
-Access unique element with `GetUniqueUI<T>`.
-
-Update ui by calling UpdateUI and UpdateLateUI.
-
-Here some ways of how you can display score, using the `UIManager`
-
-Use dependency container:
-``` C#
-public class ScoreUI : UIElement {
-    public TMP_Text Text;
-    public Score    Score;
-
-    public override void ResolveDependencies(Container c) {
-        Score = c.Resolve<Score>();
+    public override void OnBecameStatic() {
+        Events.UnsubPrivate<UnitDiedEvent>("units", OnUnitDeath);
     }
 
-    public override void UpdateElement(float dt) {
-        Text.text = Score.Total.ToString();
+    private void OnUnitDeath(UnitDiedEvent evnt) {
+        if (evnt.Side != Side.Player) return;
+
+        RemoveUnitCardFromList(evnt.Handle);
     }
 }
 ```
-
-Access unique ui element:
-``` C#
-class Score {
-    uint total_score;
-
-    void IncreaseScore(uint count) {
-        total_score += count;
-        UIManager.GetUnique<ScoreUI>().UpdateTotalScore(total_score);
-    }
-}
-```
-
-Update element by accessing score directly
-``` C#
-class Score {
-    uint total_score;
-
-    void IncreaseScore(uint count) {
-        total_score += count;
-    }
-}
-
-class ScoreUI : UIElement {
-    TMP_Text text;
-
-    override void UpdateElement(float dt) {
-        var score = Singleton<Score>.Instance;
-        text.text = score.total_score;
-    }
-}
-```
-
-You don't need mvc if you use your brain instead of reading articles on hackernews.  
-
-`UIElements` can be separated by update time.  
-`UpdateUI` should be called before gameplay code and `UpdateLateUI` after.  
-Don't forget to configure flags on `UIElement`.  
-If it has `Dynamic` flag, it will be updated during `UpdateUI`.
-If it has `UpdateLately` flag, it will be updated during `UpdateLateUI`.  
-If neither of flags are set it won't be updated at all.
 
 # ComponentSystem
-The example project using it, can be found [HERE](https://github.com/KOTlK/FireSpread).  
 With component system you can add component to an Entity.  
 This is not ECS, you can't filter entities, there is no archetypes, etc.  
 Prefere to use fat struct for your component instead of having more components.  

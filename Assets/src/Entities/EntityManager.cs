@@ -3,8 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Reflex.Injectors;
-using Reflex.Extensions;
-using UnityEngine.SceneManagement;
+using Reflex.Core;
 
 using static ArrayUtils;
 using static Assertions;
@@ -60,8 +59,10 @@ public class EntityManager {
     [HideInInspector]
     public uint                                         FreeEntitiesCount;
     public uint                                         EntitiesToRemoveCount;
+    public Container                                    Container;
 
-    public EntityManager() {
+    public EntityManager(Container container) {
+        Container = container;
         BakedEntities.Clear();
         EntitiesByType.Clear();
         DynamicEntities.Clear();
@@ -219,9 +220,7 @@ public class EntityManager {
             obj.OnBecameDynamic();
         }
 
-        var container = SceneManager.GetActiveScene().GetSceneContainer();
-        Assert(container != null, "Cannot inject into entity, SceneContainer is null. Did you add ContainerScope into the scene?");
-        GameObjectInjector.InjectSingle(obj.gameObject, container);
+        GameObjectInjector.InjectSingle(obj.gameObject, Container);
         obj.OnCreate();
 
         return (handle, obj);
@@ -268,9 +267,7 @@ public class EntityManager {
             e.OnBecameDynamic();
         }
 
-        var container = SceneManager.GetActiveScene().GetSceneContainer();
-        Assert(container != null, "Cannot inject into entity, SceneContainer is null. Did you add ContainerScope into the scene?");
-        GameObjectInjector.InjectSingle(e.gameObject, container);
+        GameObjectInjector.InjectSingle(e.gameObject, Container);
         e.OnCreate();
 
         return e;
