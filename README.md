@@ -5,7 +5,7 @@
 **If you think incapsulation (hide everything) is the best thing in the world, close the page and contact your doctor.**  
 **If you think SOLID is a great thing and everyone should follow it (especially S part), close the page.**  
 **If you are clean code guru, close the page.**  
-**If you prefere complexity over simplicity, close the page.**
+**If you prefere complexity over simplicity, close the page.**  
 **There is no MVC/MVP/MVVM or any other stupid web pattern. If you like it, I don't care.**  
 **Entity System is NOT ECS.**  
 **If something above triggers you, close the page, don't waste your time.**
