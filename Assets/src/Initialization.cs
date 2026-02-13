@@ -12,10 +12,10 @@ public class Initialization : MonoBehaviour {
 
     private void Awake() {
         var canvas    = FindAnyObjectByType<Canvas>();
-        var (_, ui)   = _em.CreateEntity<UI>(UI, 
-                                             Vector3.zero, 
-                                             Quaternion.identity, 
-                                             canvas.transform);
+        var ui   = _em.CreateEntity<UI>(UI, 
+                                        Vector3.zero, 
+                                        Quaternion.identity, 
+                                        canvas.transform);
 
         Events.RaiseGeneral<InitializationCompleted>(new());
     }

@@ -1,12 +1,42 @@
 using UnityEngine;
 using Reflex.Attributes;
+using System.Runtime.CompilerServices;
 
 [RequireComponent(typeof(RectTransform))]
-public class UIElement : Entity {
-             public RectTransform  Transform;
-    [Inject] public Canvas         Canvas;
+public class UIElement : MonoBehaviour {
+    [ReadOnly] public string          AssetAddress;
+    [ReadOnly] public uint            Id;
+               public EntityFlags     Flags;
+    [DontSave] public bool            AutoBake;
+    [DontSave] public UIEntityManager Em;
+               public RectTransform   Transform;
+    [Inject]   public Canvas          Canvas;
 
-    public Vector3 WorldPosition    => transform.position;
+    public Vector3 Position {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => transform.position;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set => transform.position = value;
+    }
+
+    public Quaternion Rotation {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => transform.rotation;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set => transform.rotation = value;
+    }
+
+    public Vector3 Scale {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => transform.localScale;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set => transform.localScale = value;
+    }
+
+    public Matrix4x4 ObjectToWorld {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => transform.localToWorldMatrix;
+    }
 
     public Vector2 AnchoredPosition {
         get {
@@ -81,25 +111,30 @@ public class UIElement : Entity {
         }
     }
 
+    [Inject]
+    private void Inject(UIEntityManager em) {
+        if (AutoBake) {
+            em.BakeEntity(this);
+        }
+    }
+
+    public virtual void OnBaking(){ }
+    public virtual void OnCreate(){ }
+    public virtual void UpdateEntity(){ }
+    public virtual void Destroy() { }
+    public virtual void OnBecameDynamic() { }
+    public virtual void OnBecameStatic() { }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void DestroyThisEntity() {
+        Em.DestroyEntity(Id);
+    }
+
     public virtual void Hide() {
         gameObject.SetActive(false);
     }
 
     public virtual void Show() {
         gameObject.SetActive(true);
-    }
-
-    [Inject]
-    protected override void Inject(EntityManager em) {
-        // Do not inject default entity manager.
-    }
-
-    // Hask to have UIEntityManager instead of EntityManager
-    [Inject]
-    private void Inject(UIEntityManager em) {
-        Debug.Log("Inject into ui element");
-        if (AutoBake) {
-            em.BakeEntity(this);
-        }
     }
 }

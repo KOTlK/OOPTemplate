@@ -2,11 +2,11 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using UnityEngine.SceneManagement;
 using Reflex.Injectors;
-using Reflex.Core;
+using Reflex.Extensions;
 
 using static ArrayUtils;
-using static Assertions;
 
 [Serializable]
 public struct PackedEntity {
@@ -59,10 +59,8 @@ public class EntityManager {
     [HideInInspector]
     public uint                                         FreeEntitiesCount;
     public uint                                         EntitiesToRemoveCount;
-    public Container                                    Container;
 
-    public EntityManager(Container container) {
-        Container = container;
+    public EntityManager() {
         BakedEntities.Clear();
         EntitiesByType.Clear();
         DynamicEntities.Clear();
@@ -220,7 +218,8 @@ public class EntityManager {
             obj.OnBecameDynamic();
         }
 
-        GameObjectInjector.InjectSingle(obj.gameObject, Container);
+        var container = SceneManager.GetActiveScene().GetSceneContainer();
+        GameObjectInjector.InjectSingle(obj.gameObject, container);
         obj.OnCreate();
 
         return (handle, obj);
@@ -267,7 +266,8 @@ public class EntityManager {
             e.OnBecameDynamic();
         }
 
-        GameObjectInjector.InjectSingle(e.gameObject, Container);
+        var container = SceneManager.GetActiveScene().GetSceneContainer();
+        GameObjectInjector.InjectSingle(e.gameObject, container);
         e.OnCreate();
 
         return e;
