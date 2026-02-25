@@ -7,13 +7,16 @@ using Reflex.Injectors;
 using Reflex.Extensions;
 
 using static ArrayUtils;
+using static Assertions;
 
 [Serializable]
 public struct PackedEntity {
     [DontSave] public Entity        Entity;
                public EntityType    Type;
+               public EntityFlags   Flags;
                public uint          Tag; // Slot's generational index
                public bool          Alive;
+               // public BitSet        EcsBitset;
 }
 
 public struct EntityHandle {
@@ -54,11 +57,14 @@ public class EntityManager {
     public List<uint>                                   DynamicEntities = new();
     public uint[]                                       RemoveQueue = new uint[128];
     public uint[]                                       FreeEntities = new uint[128];
+    public BitSet[]                                     Archetypes = new BitSet[128];
     [HideInInspector]
     public uint                                         MaxEntitiesCount = 1;
     [HideInInspector]
     public uint                                         FreeEntitiesCount;
     public uint                                         EntitiesToRemoveCount;
+
+    public Ecs Ecs;
 
     public EntityManager() {
         BakedEntities.Clear();
@@ -74,8 +80,13 @@ public class EntityManager {
         }
 
         EntityFlagsChanged += CheckDynamicOnFlagsChange;
+
+        foreach(var bitset in Archetypes) {
+            bitset.ClearAll();
+        }
     }
 
+    // @TODO: Clear and load archetypes
     public void Save(BinarySaveFile sf) {
         sf.Write(MaxEntitiesCount);
         for(uint i = 1; i < MaxEntitiesCount; ++i) {
@@ -156,13 +167,14 @@ public class EntityManager {
         };
 
         if(MaxEntitiesCount == Entities.Length) {
-            Resize(ref Entities, MaxEntitiesCount << 1);
+            Resize(MaxEntitiesCount << 1);
         }
 
         Entities[id].Entity  = entity;
         Entities[id].Alive   = true;
         Entities[id].Type    = entity.Type;
         Entities[id].Tag     = tag;
+        Entities[id].Flags   = entity.Flags;
 
         entity.Handle      = handle;
         entity.Em          = this;
@@ -200,13 +212,15 @@ public class EntityManager {
         var obj = AssetManager.Instantiate<T>(prefab, position, orientation, parent);
 
         if(MaxEntitiesCount == Entities.Length) {
-            Resize(ref Entities, MaxEntitiesCount << 1);
+            Resize(MaxEntitiesCount << 1);
         }
 
         Entities[id].Entity  = obj;
         Entities[id].Alive   = true;
         Entities[id].Type    = obj.Type;
         Entities[id].Tag     = tag;
+        Entities[id].Flags   = obj.Flags;
+
 
         obj.Handle      = handle;
         obj.Em          = this;
@@ -243,7 +257,7 @@ public class EntityManager {
         uint id = MaxEntitiesCount++;
 
         if(MaxEntitiesCount == Entities.Length) {
-            Resize(ref Entities, MaxEntitiesCount << 1);
+            Resize(MaxEntitiesCount << 1);
         }
         var handle = new EntityHandle {
             Id = id,
@@ -253,6 +267,7 @@ public class EntityManager {
         Entities[id].Entity  = e;
         Entities[id].Alive   = true;
         Entities[id].Type    = type;
+        Entities[id].Flags   = e.Flags;
 
         e.Handle = handle;
         e.Em     = this;
@@ -273,14 +288,47 @@ public class EntityManager {
         return e;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void DestroyEntity(EntityHandle handle) {
-        if(EntitiesToRemoveCount == RemoveQueue.Length) {
-            Resize(ref RemoveQueue, EntitiesToRemoveCount << 1);
+    public EntityHandle CreatePureEcsEntity() {
+        uint id;
+
+        if(FreeEntitiesCount > 0) {
+            id = FreeEntities[--FreeEntitiesCount];
+        }else{
+            id = MaxEntitiesCount++;
         }
 
-        if(IsValid(handle)) {
+        uint tag = Entities[id].Tag;
+
+        Entities[id].Flags = EntityFlags.EcsOnly;
+        Entities[id].Alive = true;
+
+        var handle = new EntityHandle {
+            Id = id,
+            Tag = tag
+        };
+
+        return handle;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void DestroyEntity(EntityHandle handle, bool calledFromEcs = false) {
+        if (!calledFromEcs) {
+            Ecs.ClearComponents(handle);
+        }
+
+        if (EntitiesToRemoveCount == RemoveQueue.Length) {
+            Array.Resize(ref RemoveQueue, (int)EntitiesToRemoveCount << 1);
+        }
+
+        if (IsValid(handle)) {
             Entities[handle.Id].Alive = false;
+            if ((Entities[handle.Id].Flags & EntityFlags.EcsOnly) == EntityFlags.EcsOnly) {
+
+                FreeEntities[FreeEntitiesCount++] = handle.Id;
+                Entities[handle.Id].Tag++;
+                return;
+            }
+
             RemoveQueue[EntitiesToRemoveCount++] = handle.Id;
         }
     }
@@ -291,7 +339,7 @@ public class EntityManager {
 
         if(entity != null) {
             if(FreeEntitiesCount == FreeEntities.Length) {
-                Resize(ref FreeEntities, FreeEntitiesCount << 1);
+                Array.Resize(ref FreeEntities, (int)FreeEntitiesCount << 1);
             }
 
             EntitiesByType[entity.Type].Remove(GetHandle(id));
@@ -393,8 +441,10 @@ public class EntityManager {
         }
     }
 
+    // @TODO: change it to use Entities[i].Flags instead of the entity itself
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetFlags(EntityHandle handle, EntityFlags flags) {
+        Assert((flags & EntityFlags.EcsOnly) != EntityFlags.EcsOnly, "Cannot change EcsOnly flag on already created entity, use Ecs flag instead.");
         if (!GetEntity(handle, out var entity)) return;
 
         var change = new FlagsChange();
@@ -404,18 +454,21 @@ public class EntityManager {
         change.Entity = entity;
 
         entity.Flags = flags;
+        Entities[handle.Id].Flags = flags;
 
         EntityFlagsChanged(change);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetFlag(EntityHandle handle, EntityFlags flag) {
+        Assert(flag != EntityFlags.EcsOnly, "Cannot change EcsOnly flag on already created entity, use Ecs flag instead.");
         if (!GetEntity(handle, out var entity)) return;
 
         if ((entity.Flags & flag) != flag) {
             var change    = new FlagsChange();
             change.Old    = entity.Flags;
             entity.Flags |= flag;
+            Entities[handle.Id].Flags |= flag;
             change.New    = entity.Flags;
             change.Entity = entity;
 
@@ -425,12 +478,14 @@ public class EntityManager {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ClearFlag(EntityHandle handle, EntityFlags flag) {
+        Assert(flag != EntityFlags.EcsOnly, "Cannot change EcsOnly flag on already created entity, use Ecs flag instead.");
         if (!GetEntity(handle, out var entity)) return;
 
         if ((entity.Flags & flag) == flag) {
             var change    = new FlagsChange();
             change.Old    = entity.Flags;
             entity.Flags &= ~flag;
+            Entities[handle.Id].Flags &= ~flag;
             change.New    = entity.Flags;
             change.Entity = entity;
 
@@ -440,15 +495,53 @@ public class EntityManager {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ToggleFlag(EntityHandle handle, EntityFlags flag) {
+        Assert(flag != EntityFlags.EcsOnly, "Cannot change EcsOnly flag on already created entity, use Ecs flag instead.");
         if (!GetEntity(handle, out var entity)) return;
 
         var change    = new FlagsChange();
         change.Old    = entity.Flags;
         entity.Flags ^= flag;
+        Entities[handle.Id].Flags ^= flag;
         change.New    = entity.Flags;
         change.Entity = entity;
 
         EntityFlagsChanged(change);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool IsEcsEntity(EntityHandle h) {
+        if (!IsValid(h)) return false;
+
+        return ((Entities[h.Id].Flags & EntityFlags.Ecs) == EntityFlags.Ecs) ||
+               ((Entities[h.Id].Flags & EntityFlags.EcsOnly) == EntityFlags.EcsOnly);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void MakeEmptyBitset(EntityHandle h, uint componentsCount) {
+        if (IsValid(h)) {
+            Archetypes[h.Id] = new(componentsCount);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public BitSet GetArchetype(EntityHandle h) {
+        Assert(IsValid(h), "Cannot get archetype for invalid entity (%)", h.Id);
+
+        return Archetypes[h.Id];
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SetComponentBit(uint h, uint b) {
+        Assert(Entities[h].Alive, "Cannot set component bit for dead entity (%)", h);
+
+        Archetypes[h].SetBit(b);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ClearComponentBit(uint h, uint b) {
+        Assert(Entities[h].Alive, "Cannot clear component bit for dead entity (%)", h);
+
+        Archetypes[h].ClearBit(b);
     }
 
     private void CheckDynamicOnFlagsChange(FlagsChange change) {
@@ -468,5 +561,10 @@ public class EntityManager {
             DynamicEntities.Add(id);
             change.Entity.OnBecameDynamic();
         }
+    }
+
+    private void Resize(uint newSize) {
+        Array.Resize(ref Entities, (int)newSize);
+        Array.Resize(ref Archetypes, (int)newSize);
     }
 }

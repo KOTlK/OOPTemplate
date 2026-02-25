@@ -85,6 +85,10 @@ public static class Main {
 
         builder.RegisterValue(uiParent);
 
+        builder.RegisterType(typeof(Ecs),
+                             Lifetime.Singleton,
+                             Reflex.Enums.Resolution.Eager);
+
         // Register all the game systems here.
         builder.RegisterType(typeof(Game), 
                              Lifetime.Singleton, 
