@@ -297,6 +297,10 @@ public class EntityManager {
             id = MaxEntitiesCount++;
         }
 
+        if (id >= Entities.Length) {
+            Resize(id << 1);
+        }
+
         uint tag = Entities[id].Tag;
 
         Entities[id].Flags = EntityFlags.EcsOnly;
@@ -326,6 +330,7 @@ public class EntityManager {
 
                 FreeEntities[FreeEntitiesCount++] = handle.Id;
                 Entities[handle.Id].Tag++;
+                Archetypes[handle.Id].ClearAll();
                 return;
             }
 
@@ -519,7 +524,11 @@ public class EntityManager {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void MakeEmptyBitset(EntityHandle h, uint componentsCount) {
         if (IsValid(h)) {
-            Archetypes[h.Id] = new(componentsCount);
+            if (Archetypes[h.Id].Allocated) {
+                Archetypes[h.Id].ClearAll();
+            } else {
+                Archetypes[h.Id] = new(componentsCount);
+            }
         }
     }
 

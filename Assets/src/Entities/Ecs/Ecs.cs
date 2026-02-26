@@ -35,6 +35,7 @@ public class Ecs {
 	private EntityManager _em;
 
 	private readonly BitSet _emptyBitset;
+	// Used to avoid gc. Not thread safe.
 	private readonly BitSet _tempBitset; // !!! clear after use !!!
 
 	public Ecs(EntityManager em) {
@@ -58,8 +59,6 @@ public class Ecs {
 
 			var attr = type.GetCustomAttribute<ComponentAttribute>();
 			if (attr != null) {
-				Debug.Log(type.FullName);
-
 				var tableType = typeof(ComponentTable<>);
 				var concreteTableType = tableType.MakeGenericType(type);
 				var ctor  = concreteTableType.GetConstructor(new Type[]{typeof(uint)});
@@ -71,7 +70,6 @@ public class Ecs {
 			}
 		}
 
-		Debug.Log(tables.Count);
 		ComponentsCount = (uint)tables.Count;
 
 		for(uint i = 0; i < ComponentsCount; i++) {
@@ -81,8 +79,8 @@ public class Ecs {
 		}
 
 		Tables = tables.ToArray();
-		EntitiesByArchetype.Add(new BitSet(ComponentsCount), new ()); // make empty archetype
 		_emptyBitset = new(ComponentsCount);
+		EntitiesByArchetype.Add(_emptyBitset, new ()); // make empty archetype
 		_tempBitset  = new(ComponentsCount);
 	}
 
@@ -109,8 +107,9 @@ public class Ecs {
 
 		for(uint i = 0; i < ComponentsCount; i++) {
 			if (arch.TestBit(i)) {
+				Debug.Log($"Removing {i} from {handle.Id}");
 				var table = Tables[i];
-				table.Remove(handle);
+				table.Remove(handle.Id);
 			}
 		}
 	}
@@ -130,7 +129,7 @@ public class Ecs {
 
 		var arch = _em.GetArchetype(handle);
 		EntitiesByArchetype[arch].Remove(handle.Id);
-		table.Add(handle, component);
+		table.Add(handle.Id, component);
 		_em.SetComponentBit(handle.Id, BitByType[typeof(T)]);
 		arch = _em.GetArchetype(handle);
 
@@ -139,7 +138,7 @@ public class Ecs {
 		} else {
 			var elist = new List<uint>();
 			elist.Add(handle.Id);
-			EntitiesByArchetype.Add(arch, elist);
+			EntitiesByArchetype.Add(arch.Copy(), elist); // make copy of archetype so it doesn't refere to the same underlying array.
 		}
 	}
 
@@ -150,7 +149,7 @@ public class Ecs {
 
 		var arch = _em.GetArchetype(handle);
 		EntitiesByArchetype[arch].Remove(handle.Id);
-		table.Remove(handle);
+		table.Remove(handle.Id);
 		_em.ClearComponentBit(handle.Id, BitByType[typeof(T)]);
 		arch = _em.GetArchetype(handle);
 
@@ -159,7 +158,7 @@ public class Ecs {
 		} else {
 			var elist = new List<uint>();
 			elist.Add(handle.Id);
-			EntitiesByArchetype.Add(arch, elist);
+			EntitiesByArchetype.Add(arch.Copy(), elist);
 		}
 	}
 
@@ -170,7 +169,6 @@ public class Ecs {
 		return arch.TestBit(BitByType[typeof(T)]);
 	}
 
-	// test
 	public void ForEach<T>(ForEachDelegate<T> del) 
 	where T : struct {
 		var type0 = typeof(T);
@@ -180,7 +178,7 @@ public class Ecs {
 		var c = table0.GetComponentsCount();
 
 		for(var i = 1; i < c; i++) {
-			del.Invoke(ref table0.Components[i]);
+			del.Invoke(ref table0.Dense[i]);
 		}
 	}
 

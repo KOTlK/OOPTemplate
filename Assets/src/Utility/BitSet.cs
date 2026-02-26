@@ -1,3 +1,5 @@
+using System.Text;
+
 public struct BitSet {
     private const int BitsPerSlot = sizeof(ulong) * 8;
 
@@ -13,6 +15,18 @@ public struct BitSet {
         }
         _bits      = new ulong[_slotCount];
     }
+
+    public BitSet Copy() {
+        var copy = new BitSet(_bitCount);
+
+        for(var i = 0; i < _slotCount; i++) {
+            copy._bits[i] = _bits[i];
+        }
+
+        return copy;
+    }
+
+    public bool Allocated => _bits != null;
 
     public override int GetHashCode() {
         ulong total = 0;
@@ -84,5 +98,22 @@ public struct BitSet {
             res._bits[i] = _bits[i] & other._bits[i];
         }
         return res;
+    }
+
+    private static readonly StringBuilder _sb = new();
+    public override string ToString() {
+        _sb.Clear();
+
+        _sb.Append('|');
+        for (uint i = 0; i < _bitCount; i++) {
+            _sb.Append(TestBit(i) ? '1' : '0');
+            _sb.Append('|');
+        }
+
+        var str = _sb.ToString();
+
+        _sb.Clear();
+
+        return str;
     }
 }
