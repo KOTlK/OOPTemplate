@@ -6,7 +6,6 @@ using UnityEngine.SceneManagement;
 using Reflex.Injectors;
 using Reflex.Extensions;
 
-using static ArrayUtils;
 using static Assertions;
 
 [Serializable]
@@ -16,7 +15,6 @@ public struct PackedEntity {
                public EntityFlags   Flags;
                public uint          Tag; // Slot's generational index
                public bool          Alive;
-               // public BitSet        EcsBitset;
 }
 
 public struct EntityHandle {
@@ -80,19 +78,20 @@ public class EntityManager {
         }
 
         EntityFlagsChanged += CheckDynamicOnFlagsChange;
+        EntityFlagsChanged += OnEcsFlagChange;
 
         foreach(var bitset in Archetypes) {
             bitset.ClearAll();
         }
     }
 
-    // @TODO: Clear and load archetypes
     public void Save(BinarySaveFile sf) {
         sf.Write(MaxEntitiesCount);
         for(uint i = 1; i < MaxEntitiesCount; ++i) {
             sf.Write(Entities[i].Type);
             sf.Write(Entities[i].Tag);
             sf.Write(Entities[i].Alive);
+            sf.Write(Entities[i].Flags);
 
             if (Entities[i].Alive && Entities[i].Entity != null) {
                 var entity = Entities[i].Entity;
@@ -101,7 +100,10 @@ public class EntityManager {
                 sf.Write(entity.Rotation);
                 sf.Write(entity.Scale);
                 sf.Write(entity.Type);
-                sf.Write(entity.Flags);
+                if ((entity.Flags & EntityFlags.Ecs) == EntityFlags.Ecs ||
+                    (entity.Flags & EntityFlags.EcsOnly) == EntityFlags.EcsOnly) {
+                    sf.Write(Archetypes[i]);
+                }
                 sf.Write(entity);
             }
         }
@@ -127,15 +129,29 @@ public class EntityManager {
             pe.Type   = sf.Read<EntityType>();
             pe.Tag    = sf.Read<uint>();
             pe.Alive  = sf.Read<bool>();
+            pe.Flags  = sf.Read<EntityFlags>();
 
             if (pe.Alive) {
-                pe.Entity = RecreateEntity(sf.Read<string>(),
-                                           sf.Read<Vector3>(),
-                                           sf.Read<Quaternion>(),
-                                           sf.Read<Vector3>(),
-                                           sf.Read<EntityType>(),
-                                           sf.Read<EntityFlags>());
+                var asset = sf.Read<UnityEngine.AddressableAssets.AssetReference>();
+                var pos   = sf.Read<Vector3>();
+                var rot   = sf.Read<Quaternion>();
+                var scale = sf.Read<Vector3>();
+                var type  = sf.Read<EntityType>();
+
+                pe.Entity = RecreateEntity(asset,
+                                           pos,
+                                           rot,
+                                           scale,
+                                           type,
+                                           pe.Flags);
+
+                if ((pe.Flags & EntityFlags.Ecs) == EntityFlags.Ecs ||
+                    (pe.Flags & EntityFlags.EcsOnly) == EntityFlags.EcsOnly) {
+                    Archetypes[i] = sf.Read<BitSet>();
+                }
+
                 sf.Read(pe.Entity);
+                pe.Entity.Flags = pe.Flags;
             } else {
                 PushEmptyEntity(i);
             }
@@ -220,7 +236,6 @@ public class EntityManager {
         Entities[id].Type    = obj.Type;
         Entities[id].Tag     = tag;
         Entities[id].Flags   = obj.Flags;
-
 
         obj.Handle      = handle;
         obj.Em          = this;
@@ -314,6 +329,7 @@ public class EntityManager {
         return handle;
     }
 
+    // @TODO: Merge DestroyEntity and DestroyEntityImmediate, so there is no 1 frame waiting to destroy entity.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void DestroyEntity(EntityHandle handle, bool calledFromEcs = false) {
         if (!calledFromEcs) {
@@ -327,7 +343,9 @@ public class EntityManager {
         if (IsValid(handle)) {
             Entities[handle.Id].Alive = false;
             if ((Entities[handle.Id].Flags & EntityFlags.EcsOnly) == EntityFlags.EcsOnly) {
-
+                if(FreeEntitiesCount == FreeEntities.Length) {
+                    Array.Resize(ref FreeEntities, (int)FreeEntitiesCount << 1);
+                }
                 FreeEntities[FreeEntitiesCount++] = handle.Id;
                 Entities[handle.Id].Tag++;
                 Archetypes[handle.Id].ClearAll();
@@ -351,6 +369,14 @@ public class EntityManager {
 
             if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
                 DynamicEntities.Remove(id);
+            }
+
+            if((entity.Flags & EntityFlags.Ecs) == EntityFlags.Ecs) {
+                Archetypes[id].ClearAll();
+            }
+
+            if((entity.Flags & EntityFlags.EcsOnly) == EntityFlags.EcsOnly) {
+                Archetypes[id].ClearAll();
             }
 
             Entities[id].Entity = null;
@@ -446,7 +472,6 @@ public class EntityManager {
         }
     }
 
-    // @TODO: change it to use Entities[i].Flags instead of the entity itself
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetFlags(EntityHandle handle, EntityFlags flags) {
         Assert((flags & EntityFlags.EcsOnly) != EntityFlags.EcsOnly, "Cannot change EcsOnly flag on already created entity, use Ecs flag instead.");
@@ -454,7 +479,7 @@ public class EntityManager {
 
         var change = new FlagsChange();
 
-        change.Old    = entity.Flags;
+        change.Old    = Entities[handle.Id].Flags;
         change.New    = flags;
         change.Entity = entity;
 
@@ -469,12 +494,12 @@ public class EntityManager {
         Assert(flag != EntityFlags.EcsOnly, "Cannot change EcsOnly flag on already created entity, use Ecs flag instead.");
         if (!GetEntity(handle, out var entity)) return;
 
-        if ((entity.Flags & flag) != flag) {
+        if ((Entities[handle.Id].Flags & flag) != flag) {
             var change    = new FlagsChange();
-            change.Old    = entity.Flags;
+            change.Old    = Entities[handle.Id].Flags;
             entity.Flags |= flag;
             Entities[handle.Id].Flags |= flag;
-            change.New    = entity.Flags;
+            change.New    = Entities[handle.Id].Flags;
             change.Entity = entity;
 
             EntityFlagsChanged(change);
@@ -486,12 +511,12 @@ public class EntityManager {
         Assert(flag != EntityFlags.EcsOnly, "Cannot change EcsOnly flag on already created entity, use Ecs flag instead.");
         if (!GetEntity(handle, out var entity)) return;
 
-        if ((entity.Flags & flag) == flag) {
+        if ((Entities[handle.Id].Flags & flag) == flag) {
             var change    = new FlagsChange();
-            change.Old    = entity.Flags;
+            change.Old    = Entities[handle.Id].Flags;
             entity.Flags &= ~flag;
             Entities[handle.Id].Flags &= ~flag;
-            change.New    = entity.Flags;
+            change.New    = Entities[handle.Id].Flags;
             change.Entity = entity;
 
             EntityFlagsChanged(change);
@@ -504,10 +529,10 @@ public class EntityManager {
         if (!GetEntity(handle, out var entity)) return;
 
         var change    = new FlagsChange();
-        change.Old    = entity.Flags;
+        change.Old    = Entities[handle.Id].Flags;
         entity.Flags ^= flag;
         Entities[handle.Id].Flags ^= flag;
-        change.New    = entity.Flags;
+        change.New    = Entities[handle.Id].Flags;
         change.Entity = entity;
 
         EntityFlagsChanged(change);
@@ -569,6 +594,22 @@ public class EntityManager {
 
             DynamicEntities.Add(id);
             change.Entity.OnBecameDynamic();
+        }
+    }
+
+    private void OnEcsFlagChange(FlagsChange change) {
+        // if ecs flag was removed
+        if ((change.Old & EntityFlags.Ecs) == EntityFlags.Ecs &&
+            (change.New & EntityFlags.Ecs) != EntityFlags.Ecs) {
+            var id = change.Entity.Handle.Id;
+
+            Ecs.ClearComponents(change.Entity.Handle);
+            Archetypes[id].ClearAll();
+        } 
+        // if ecs flag was added
+        else if ((change.Old & EntityFlags.Ecs) != EntityFlags.Ecs &&
+                 (change.New & EntityFlags.Ecs) == EntityFlags.Ecs) {
+            MakeEmptyBitset(change.Entity.Handle, Ecs.ComponentsCount);
         }
     }
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using UnityEngine;
+using UnityEngine.Pool;
 
 using static Assertions;
 
@@ -26,17 +27,21 @@ public struct TestComponent2 {
 
 [UnityEngine.Scripting.Preserve]
 public class Ecs {
-	public IComponentTable[]      		  Tables;
-	public Dictionary<Type, uint> 		  BitByType;
-	public Dictionary<BitSet, List<uint>> EntitiesByArchetype;
-	public Dictionary<Type, BitSet>       ArchetypeByType;
-	public uint 						  ComponentsCount;
+	public struct QueryResult {
+		public List<BitSet> Archetypes;
+	}
+
+	public IComponentTable[]      		   Tables;
+	public Dictionary<Type, uint> 		   BitByType;
+	public Dictionary<BitSet, List<uint>>  EntitiesByArchetype;
+	public Dictionary<Type, BitSet>        ArchetypeByType;
+	public Dictionary<BitSet, QueryResult> QueryCache;
+	public uint 						   ComponentsCount;
 
 	private EntityManager _em;
 
-	private readonly BitSet _emptyBitset;
-	// Used to avoid gc. Not thread safe.
-	private readonly BitSet _tempBitset; // !!! clear after use !!!
+	private readonly BitSet 	  _emptyBitset;
+	private readonly Pool<BitSet> _bitsetPool;
 
 	public Ecs(EntityManager em) {
 		_em                 = em;
@@ -45,9 +50,11 @@ public class Ecs {
 		BitByType           = null;
 		EntitiesByArchetype = null;
 		ArchetypeByType     = null;
+		QueryCache          = null;
 		BitByType           = new();
 		EntitiesByArchetype = new();
 		ArchetypeByType     = new();
+		QueryCache          = new();
 		EntitiesByArchetype.Clear();
 		ArchetypeByType.Clear();
 		var  ass         = Assembly.GetExecutingAssembly();
@@ -81,7 +88,14 @@ public class Ecs {
 		Tables = tables.ToArray();
 		_emptyBitset = new(ComponentsCount);
 		EntitiesByArchetype.Add(_emptyBitset, new ()); // make empty archetype
-		_tempBitset  = new(ComponentsCount);
+		_bitsetPool = new(() => {
+			return new BitSet(ComponentsCount);
+		},
+		(BitSet bitset) => {
+			bitset.ClearAll();
+		});
+		// _tempBitset  = new(ComponentsCount);
+		// _tempBitset2  = new(ComponentsCount);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -107,7 +121,6 @@ public class Ecs {
 
 		for(uint i = 0; i < ComponentsCount; i++) {
 			if (arch.TestBit(i)) {
-				Debug.Log($"Removing {i} from {handle.Id}");
 				var table = Tables[i];
 				table.Remove(handle.Id);
 			}
@@ -138,8 +151,39 @@ public class Ecs {
 		} else {
 			var elist = new List<uint>();
 			elist.Add(handle.Id);
-			EntitiesByArchetype.Add(arch.Copy(), elist); // make copy of archetype so it doesn't refere to the same underlying array.
+			var a = arch.Copy();
+			EntitiesByArchetype.Add(a, elist); // make copy of archetype so it doesn't refere to the same underlying array.
+
+			CleanupQueries(BitByType[typeof(T)]);
 		}
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private void CleanupQueries(uint componentBit) {
+		var removeList = ListPool<BitSet>.Get();
+		var mask = _bitsetPool.Get();
+		mask.SetBit(componentBit);
+
+		foreach(var (qArch, query) in QueryCache) {
+			var result = _bitsetPool.Get();
+			qArch.And(mask, result);
+
+			if (mask == result) {
+				removeList.Add(qArch);
+			}
+
+			_bitsetPool.Release(result);
+		}
+
+		_bitsetPool.Release(mask);
+
+		foreach (var arch in removeList) {
+			QueryCache.Remove(arch);
+		}
+
+		removeList.Clear();
+
+		ListPool<BitSet>.Release(removeList);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -159,6 +203,7 @@ public class Ecs {
 			var elist = new List<uint>();
 			elist.Add(handle.Id);
 			EntitiesByArchetype.Add(arch.Copy(), elist);
+			CleanupQueries(BitByType[typeof(T)]);
 		}
 	}
 
@@ -176,10 +221,20 @@ public class Ecs {
 		var table0 = (ComponentTable<T>)Tables[BitByType[type0]];
 
 		var c = table0.GetComponentsCount();
+		var mask = _bitsetPool.Get();
+		mask.SetBit(BitByType[type0]);
 
-		for(var i = 1; i < c; i++) {
-			del.Invoke(ref table0.Dense[i]);
+		var query = Query(mask);
+
+		foreach(var arch in query.Archetypes) {
+			var list = EntitiesByArchetype[arch];
+
+			for (var i = 0; i < list.Count; i++) {
+				del.Invoke(ref table0.Get(list[i]));
+			}
 		}
+
+		_bitsetPool.Release(mask);
 	}
 
 	public void ForEach<T0, T1>(ForEachDelegate<T0, T1> del) 
@@ -190,21 +245,53 @@ public class Ecs {
 		var type1 = typeof(T1);
 		Assert(BitByType.ContainsKey(type1), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type1.FullName);
 
-		_tempBitset.SetBit(BitByType[type0]);
-		_tempBitset.SetBit(BitByType[type1]);
+		var mask = _bitsetPool.Get();
 
-		if (EntitiesByArchetype.TryGetValue(_tempBitset, out var entities)) {
-			var table0 = (ComponentTable<T0>)Tables[BitByType[type0]];
-			var table1 = (ComponentTable<T1>)Tables[BitByType[type1]];
+		mask.SetBit(BitByType[type0]);
+		mask.SetBit(BitByType[type1]);
 
-			for(var i = 0; i < entities.Count; i++) {
-				var entity = entities[i];
-				ref var c0 = ref table0.Get(entity);
-				ref var c1 = ref table1.Get(entity);
-				del(ref c0, ref c1);
+		var query = Query(mask);
+
+		var table0 = (ComponentTable<T0>)Tables[BitByType[type0]];
+		var table1 = (ComponentTable<T1>)Tables[BitByType[type1]];
+
+		foreach(var arch in query.Archetypes) {
+			var list = EntitiesByArchetype[arch];
+
+			for (var i = 0; i < list.Count; i++) {
+				var entity = list[i];
+				del.Invoke(ref table0.Get(entity), ref table1.Get(entity));
 			}
 		}
 
-		_tempBitset.ClearAll();
+		_bitsetPool.Release(mask);
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private QueryResult Query(BitSet mask) {
+		if (QueryCache.ContainsKey(mask) == false) {
+			var result = new QueryResult();
+			result.Archetypes = new();
+			var and = _bitsetPool.Get();
+
+			foreach (var (arch, list) in EntitiesByArchetype) {
+				arch.And(mask, and);
+
+				if (and != mask) {
+					and.ClearAll();
+					continue;
+				}
+
+				result.Archetypes.Add(arch.Copy());
+				and.ClearAll();
+			}
+
+			_bitsetPool.Release(and);
+
+			QueryCache.Add(mask.Copy(), result);
+			return result;
+		} else {
+			return QueryCache[mask];
+		}
 	}
 }

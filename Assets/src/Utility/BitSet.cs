@@ -100,6 +100,12 @@ public struct BitSet {
         return res;
     }
 
+    public void And(BitSet other, BitSet res) {
+        for (uint i = 0; i < _slotCount; i++) {
+            res._bits[i] = _bits[i] & other._bits[i];
+        }
+    }
+
     private static readonly StringBuilder _sb = new();
     public override string ToString() {
         _sb.Clear();
