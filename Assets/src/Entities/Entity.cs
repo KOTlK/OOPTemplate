@@ -3,12 +3,12 @@ using System.Runtime.CompilerServices;
 using Reflex.Attributes;
 
 public class Entity : MonoBehaviour {
+    [ReadOnly][DontSave] public EntityHandle  Handle;
     [ReadOnly] public string        AssetAddress;
-               public EntityFlags   Flags;
-               public EntityType    Type;
-    [DontSave] public EntityHandle  Handle;
-    [DontSave] public bool          AutoBake;
     [DontSave] public EntityManager Em;
+               public EntityType    Type;
+               public EntityFlags   Flags;
+    [DontSave] public bool          AutoBake;
 
     public Vector3 Position {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -37,7 +37,7 @@ public class Entity : MonoBehaviour {
     }
 
     [Inject]
-    protected virtual void Inject(EntityManager em) {
+    private void Inject(EntityManager em) {
         if (AutoBake) {
             em.BakeEntity(this);
         }

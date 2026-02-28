@@ -508,6 +508,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b5ab3b2a1edfca148bfe175cf923189f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Game::EcsDebugger
+  WindowWidth: 1600
+  WindowHeight: 900
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

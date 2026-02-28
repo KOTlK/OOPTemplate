@@ -17,6 +17,12 @@ public sealed class QuitGameSystem : GameSystem {
 			Game.Quit();
 		}
 
+		if (Keyboard.current.altKey.isPressed) {
+			var (handle, _) = _em.CreateEntity<TestEntity>("test_entity", Vector3.zero, Quaternion.identity);
+
+			_entities.Add(handle);
+		}
+
 		if (Keyboard.current.spaceKey.isPressed) {
 			var entity = _ecs.CreateEntity();
 
@@ -38,7 +44,7 @@ public sealed class QuitGameSystem : GameSystem {
 				var rand = Random.Range(0, _entities.Count);
 				var entity = _entities[rand];
 
-				_ecs.DestroyEntity(entity);
+				_em.DestroyEntity(entity);
 				_entities.RemoveAt(rand);
 			}
 		}
@@ -48,8 +54,10 @@ public sealed class QuitGameSystem : GameSystem {
 				var rand = Random.Range(0, _entities.Count);
 				var entity = _entities[rand];
 
-				if (_ecs.HasComponent<TestComponent2>(entity)) {
-					_ecs.RemoveComponent<TestComponent2>(entity);
+				if (_em.IsEcsEntity(entity)) {
+					if (_ecs.HasComponent<TestComponent2>(entity)) {
+						_ecs.RemoveComponent<TestComponent2>(entity);
+					}
 				}
 			}
 		}

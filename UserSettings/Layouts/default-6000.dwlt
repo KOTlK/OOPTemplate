@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1858
     height: 1037
   m_ShowMode: 4
-  m_Title: Game
+  m_Title: Hierarchy
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -219,8 +219,8 @@ MonoBehaviour:
     y: 0
     width: 293
     height: 644
-  m_MinSize: {x: 202, y: 226}
-  m_MaxSize: {x: 4002, y: 4026}
+  m_MinSize: {x: 200, y: 200}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 18}
   m_Panes:
   - {fileID: 18}
@@ -351,8 +351,8 @@ MonoBehaviour:
     y: 0
     width: 473
     height: 981
-  m_MinSize: {x: 276, y: 76}
-  m_MaxSize: {x: 4001, y: 4026}
+  m_MinSize: {x: 275, y: 50}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 23}
   m_Panes:
   - {fileID: 23}
@@ -381,8 +381,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "UnityEditor.MainToolbarWindow\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 0
-    y: 0
+    x: 62
+    y: 43
     width: 1858
     height: 36
   m_SerializedDataModeController:
@@ -647,8 +647,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Game\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 521
-    y: 24
+    x: 582
+    y: 79
     width: 863
     height: 618
   m_SerializedDataModeController:
@@ -750,8 +750,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Hierarchy\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 0
-    y: 24
+    x: 62
+    y: 79
     width: 226
     height: 618
   m_SerializedDataModeController:
@@ -770,9 +770,10 @@ MonoBehaviour:
   m_SceneHierarchy:
     m_TreeViewState:
       scrollPos: {x: 0, y: 0}
-      m_SelectedIDs: []
+      m_SelectedIDs:
+      - m_Data: -12
       m_LastClickedID:
-        m_Data: 0
+        m_Data: -12
       m_ExpandedIDs:
       - m_Data: -1304
       m_RenameOverlay:
@@ -821,8 +822,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Scene\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 228
-    y: 24
+    x: 289
+    y: 79
     width: 291
     height: 618
   m_SerializedDataModeController:
@@ -1473,7 +1474,7 @@ MonoBehaviour:
   m_Rotation:
     m_Target: {x: -0.26411605, y: -0.012444445, z: 0.0034079598, w: -0.964406}
     speed: 2
-    m_Value: {x: -0.26411605, y: -0.012444445, z: 0.00340796, w: -0.9644061}
+    m_Value: {x: -0.2641157, y: -0.012444428, z: 0.0034079554, w: -0.96440476}
   m_Size:
     m_Target: 0.6627882
     speed: 2
@@ -1589,7 +1590,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 62
     y: 723
-    width: 789
+    width: 782
     height: 311
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -1615,7 +1616,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets/Scenes
+    - Assets/src/Entities
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -1625,7 +1626,7 @@ MonoBehaviour:
   m_ViewMode: 1
   m_StartGridSize: 64
   m_LastFolders:
-  - Assets/Scenes
+  - Assets/src/Entities
   m_LastFoldersGridSize: -1
   m_LastProjectPath: C:\Work\Unity\Ecs
   m_LockTracker:
@@ -1634,12 +1635,12 @@ MonoBehaviour:
   m_FolderTreeState:
     scrollPos: {x: 0, y: 79}
     m_SelectedIDs:
-    - m_Data: 65168
+    - m_Data: 49472
     m_LastClickedID:
-      m_Data: 65168
+      m_Data: 49472
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 48908
+    - m_Data: 48912
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1672,7 +1673,7 @@ MonoBehaviour:
       m_Data: 0
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 48908
+    - m_Data: 48912
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1699,10 +1700,9 @@ MonoBehaviour:
       m_Icon: {fileID: 0}
       m_ResourceFile: 
   m_ListAreaState:
-    m_SelectedInstanceIDs:
-    - m_Data: 65302
-    m_LastClickedInstanceID: 65302
-    m_HadKeyboardFocusLastEvent: 1
+    m_SelectedInstanceIDs: []
+    m_LastClickedInstanceID: 0
+    m_HadKeyboardFocusLastEvent: 0
     m_ExpandedInstanceIDs: []
     m_RenameOverlay:
       m_UserAcceptedRename: 0
@@ -1754,8 +1754,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Console\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 0
-    y: 24
+    x: 62
+    y: 723
     width: 782
     height: 311
   m_SerializedDataModeController:
@@ -1792,8 +1792,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Project\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 784
-    y: 24
+    x: 845
+    y: 723
     width: 600
     height: 311
   m_SerializedDataModeController:
@@ -1820,7 +1820,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets
+    - Assets/Prefabs
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -1830,21 +1830,23 @@ MonoBehaviour:
   m_ViewMode: 1
   m_StartGridSize: 16
   m_LastFolders:
-  - Assets
+  - Assets/Prefabs
   m_LastFoldersGridSize: -1
   m_LastProjectPath: C:\Work\Unity\Ecs
   m_LockTracker:
     m_IsLocked: 1
   m_LastLocalAssetsSearchArea: 1
   m_FolderTreeState:
-    scrollPos: {x: 0, y: 19}
+    scrollPos: {x: 0, y: 79}
     m_SelectedIDs:
-    - m_Data: 48902
+    - m_Data: 49242
     m_LastClickedID:
-      m_Data: 48902
+      m_Data: 49242
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 48908
+    - m_Data: 48912
+    - m_Data: 1000000000
+    - m_Data: 2147483647
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1877,7 +1879,7 @@ MonoBehaviour:
       m_Data: 0
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 48908
+    - m_Data: 48912
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1905,8 +1907,8 @@ MonoBehaviour:
       m_ResourceFile: 
   m_ListAreaState:
     m_SelectedInstanceIDs:
-    - m_Data: 48828
-    m_LastClickedInstanceID: 48828
+    - m_Data: -12
+    m_LastClickedInstanceID: -12
     m_HadKeyboardFocusLastEvent: 0
     m_ExpandedInstanceIDs: []
     m_RenameOverlay:
@@ -1959,8 +1961,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Inspector\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 1386
-    y: 24
+    x: 1447
+    y: 79
     width: 472
     height: 955
   m_SerializedDataModeController:
@@ -2281,7 +2283,7 @@ MonoBehaviour:
     m_CachedPref: 241
     m_ControlHash: 1412526313
     m_PrefName: Preview_InspectorPreview
-  m_LastInspectedObjectInstanceID: 48828
+  m_LastInspectedObjectInstanceID: -1
   m_LastVerticalScrollValue: 0
   m_GlobalObjectId: 
   m_InspectorMode: 0
