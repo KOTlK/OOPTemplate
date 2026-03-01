@@ -6,13 +6,13 @@
 **If you think SOLID is a great thing and everyone should follow it (especially S part), close the page.**  
 **If you are clean code guru, close the page.**  
 **If you prefere complexity over simplicity, close the page.**  
-**There is no MVC/MVP/MVVM or any other stupid web pattern. If you like it, I don't care.**  
+**There is no MVC/MVP/MVVM/(put your thing, that's being pushed right now as better mvc, even though is't the same fucking concept every fucking time, for sure, this time it will work out, here.). If you like it, I pity you.**  
 **Entity System is NOT ECS.**  
 **If something above triggers you, close the page, don't waste your time.**
 
 # Limitations
-**Unity version: 6.3 LTS(6000.3.4f1)**  
-Medium and hard IL2CPP stripping levels kills everything. It can be di container issue (as it affects only the things that are instantiated by it), but, thanks to Unity, I don't even know what exactly getting stripped out.
+ - **Unity version: 6.3 LTS(6000.3.4f1)**  
+ - Medium and hard IL2CPP stripping levels kills everything. It can be di container issue (as it affects only the things that are instantiated by it), but, thanks to Unity, I don't even know what exactly getting stripped out.
 
 <details>
 <summary> Table of content </summary>
@@ -61,9 +61,9 @@ Here you can create and initialize your game systems, bind them to di container,
 
 # Game Systems
 To create custom game system, inherit from [GameSystem](Assets/src/Game/GameSystem.cs) class and override it's methods for your need.  
-Register your system in [Main.cs](Assets/src/Main.cs);
+Register your system in [Main.cs](Assets/src/Main.cs).  
 To register system, bind it to the container after `Game` binding.  
-To obtain any system, call `GetSystem<T>()` on `Game` instance. It's better not to inject system into other system via di container as it handles cross references badly. Game instance will always be injected into the system automatically.  
+To obtain any system, call `GetSystem<T>()` on `Game` instance. It's better not to inject system into other system via di container as it handles cross references badly. Game instance will always be injected into the system automatically as long as it stays in bindings before systems.  
 
 # Entity System
 
@@ -263,7 +263,7 @@ You can see localization file examples inside `Assets/StreamingAssets/Localizati
 
 # UI
 [UIEntityManager](Assets/src/UI/UIEntityManager.cs) is entity manager that you should use to instantiate [UIElement](Assets/src/UI/UIelement.cs)'s.  
-It's same as [EntityManager](#entity-manager), but handles ui entities.  
+It's almost the same as [EntityManager](#entity-manager), but it doesn't use handles as ui elements are more static then entities.  
 To connect game logic and ui, use [Events](#events). Don't use fucking mvc.  
 Here is an example of how simple it can be:
 ``` c#
