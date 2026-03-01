@@ -1,20 +1,21 @@
 using System;
-using static Assertions;
 
 public class Pool<T> {
-    public delegate T CreatePooledItem();
+    public Func<T>          OnCreate;
+    public Action<T>        OnRelease;
     public T[]              Items;
-    public CreatePooledItem Factory;
     public int              ItemsCount;
     
-    public Pool(CreatePooledItem factory) {
-        Factory    = factory;
-        Items      = new T[30];
+    public Pool(Func<T> onCreate, Action<T> onRelease) {
+        OnCreate   = onCreate;
+        OnRelease  = onRelease;
+        Items      = new T[32];
         ItemsCount = 0;
     }
     
-    public Pool(CreatePooledItem factory, int initialCapacity) {
-        Factory    = factory;
+    public Pool(Func<T> onCreate, Action<T> onRelease, int initialCapacity) {
+        OnCreate   = onCreate;
+        OnRelease  = onRelease;
         Items      = new T[initialCapacity];
         ItemsCount = 0;
     }
@@ -23,17 +24,16 @@ public class Pool<T> {
         if(ItemsCount > 0) {
             return Items[--ItemsCount];
         }else {
-            Assert(Factory != null);
-            return Factory();
+            return OnCreate();
         }
-        
     }
     
-    public void Return(T item) {
+    public void Release(T item) {
         if(ItemsCount >= Items.Length) {
             Array.Resize(ref Items, ItemsCount << 1);
         }
         
         Items[ItemsCount++] = item;
+        OnRelease(item);
     }
 }
