@@ -7,7 +7,7 @@
 **If you are clean code guru, close the page.**  
 **If you prefere complexity over simplicity, close the page.**  
 **There is no MVC/MVP/MVVM/(put your thing, that's being pushed right now as better mvc, even though is't the same fucking concept every fucking time, for sure, this time it will work out, here.). If you like it, I pity you.**  
-**Entity System is NOT ECS.**  
+**Entity System is NOT ECS, but ECS is a part of this template.**  
 **If something above triggers you, close the page, don't waste your time.**
 
 # Limitations
@@ -37,7 +37,7 @@
     - [Editor overview](#editor-overview)
     - [Locale](#locale)
 - [UI](#ui)
-- [ComponentSystem](#componentsystem)
+- [Ecs](#ecs)
 </details>
 
 # Installation
@@ -296,19 +296,37 @@ public class PlayerUnitScreen : UIElement {
 }
 ```
 
-# ComponentSystem
-With component system you can add component to an Entity.  
-This is not ECS, you can't filter entities, there is no archetypes, etc.  
-Prefere to use fat struct for your component instead of having more components.  
-Before using each component system, you should initialize it with  
-`ComponentSystem<T>.Make(UpdateFunc)`.  
-`UpdateFunc` is a method with signature: `void UpdateFunc(T[] components, int count)`.  
-In the update function iterate through components and do whatever you want to.  
-⚠ Always start iteration from 1. `for(int i = 1; i < count; i++)`.  
-Or you can use `ComponentSystem<T>.Iterate()` to iterate through components, but it's slower.  
-`foreach(var component in ComponentSystem<Component>.Iterate()) ...`  
-Update system directly with `ComponentSystem<T>.Update()`.  
-Add, remove, get, check component, using `ComponentSystem<T>.Add/Remove/Get/Has()` or  
-Use extension methods for `EntityHandle` and `Entity`:  
-`handle.AddComponent<Component>(new Component())`,  
-`entity.AddComponent<Component>()`.  
+# Ecs
+[Ecs](Assets/src/Entities/Ecs/Ecs.cs) is an additional entity system, that you can use along with the default entity system.  
+Ecs can be injected via di container in any game system or entity, created by EntityManager.  
+To be able to use ecs on entity, you should set `EntityFlags.Ecs` or `EntityFlags.EcsOnly` on the entity.  
+Set the first flag if you want to use entity, created by EntityManager(inherited from `Entity`) with ecs.  
+Set the second flag if you want to use only ecs for this entity.  
+You can create ecs only entity with `Ecs.CreateEntity()`.  
+Mark your struct with `[Component]` attribute before using it.  
+Add component with `Ecs.AddComponent<T>(handle)`.  
+Remove component with `Ecs.RemoveComponent<T>(handle)`.  
+Check if entity has component with `Ecs.HasComponent<T>(handle)`.  
+Iterate over entities with `Ecs.ForEach<C1, C2>(func)`.  
+There is no functionality to exclude components from query as it creates more complexity in gameplay code.  
+Here is how you can iterate over entities:
+```c#
+[Component]
+public struct Health {
+    public uint Max;
+    public uint Current;
+}
+
+[Component]
+public struct Damage {
+    public uint Amount;
+}
+
+Ecs.ForEach((uint entity, ref Monster monster, ref Health hp, ref Damage damage) => {
+    hp.Current = clamp(hp.Current - damage.Amount, 0, hp.Max);
+
+    if (hp.Current == 0) {
+        Ecs.AddComponent<Dead>(entity);
+    }
+});
+```

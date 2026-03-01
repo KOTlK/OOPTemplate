@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using UnityEngine;
 using UnityEngine.Pool;
 
 using static Assertions;
@@ -14,19 +13,14 @@ public delegate void ForEachDelegate<T0, T1, T2, T3>(ref T0 c0, ref T1 c1, ref T
 public delegate void ForEachDelegate<T0, T1, T2, T3, T4>(ref T0 c0, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4);
 public delegate void ForEachDelegate<T0, T1, T2, T3, T4, T5>(ref T0 c0, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4, ref T5 c5);
 
+public delegate void ForEachWithEntityDelegate<T>(uint entity, ref T c0);
+public delegate void ForEachWithEntityDelegate<T0, T1>(uint entity, ref T0 c0, ref T1 c1);
+public delegate void ForEachWithEntityDelegate<T0, T1, T2>(uint entity, ref T0 c0, ref T1 c1, ref T2 c2);
+public delegate void ForEachWithEntityDelegate<T0, T1, T2, T3>(uint entity, ref T0 c0, ref T1 c1, ref T2 c2, ref T3 c3);
+public delegate void ForEachWithEntityDelegate<T0, T1, T2, T3, T4>(uint entity, ref T0 c0, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4);
+public delegate void ForEachWithEntityDelegate<T0, T1, T2, T3, T4, T5>(uint entity, ref T0 c0, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4, ref T5 c5);
+
 public class ComponentAttribute : Attribute {
-}
-
-[Component]
-public struct TestComponent {
-	public Vector2 Position;
-	public Vector2 Size;
-}
-
-[Component]
-public struct TestComponent2 {
-	public int c;
-	public uint b;
 }
 
 [UnityEngine.Scripting.Preserve]
@@ -98,8 +92,6 @@ public class Ecs {
 		(BitSet bitset) => {
 			bitset.ClearAll();
 		});
-		// _tempBitset  = new(ComponentsCount);
-		// _tempBitset2  = new(ComponentsCount);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -132,32 +124,33 @@ public class Ecs {
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public ComponentTable<T> GetComponentTable<T>() 
-	where T : struct {
-		return (ComponentTable<T>)Tables[BitByType[typeof(T)]];
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public void AddComponent<T>(EntityHandle handle, T component = default(T)) 
 	where T : struct {
 		var table = GetComponentTable<T>();
 
 		Assert(_em.IsEcsEntity(handle), "Cannot add component to non ecs entity, add Ecs or EcsOnly flags to an entity");
 
-		var arch = _em.GetArchetype(handle);
-		EntitiesByArchetype[arch].Remove(handle.Id);
-		table.Add(handle.Id, component);
-		_em.SetComponentBit(handle.Id, BitByType[typeof(T)]);
-		arch = _em.GetArchetype(handle);
+		AddComponent<T>(handle.Id, component);
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public void AddComponent<T>(uint entity, T component = default(T)) 
+	where T : struct {
+		var table = GetComponentTable<T>();
+
+		var arch = _em.GetArchetype(entity);
+		EntitiesByArchetype[arch].Remove(entity);
+		table.Add(entity, component);
+		_em.SetComponentBit(entity, BitByType[typeof(T)]);
+		arch = _em.GetArchetype(entity);
 
 		if (EntitiesByArchetype.TryGetValue(arch, out var list)) {
-			list.Add(handle.Id);
+			list.Add(entity);
 		} else {
 			var elist = new List<uint>();
-			elist.Add(handle.Id);
+			elist.Add(entity);
 			var a = arch.Copy();
 			EntitiesByArchetype.Add(a, elist); // make copy of archetype so it doesn't refere to the same underlying array.
-
 			CleanupQueries(BitByType[typeof(T)]);
 		}
 	}
@@ -195,17 +188,27 @@ public class Ecs {
 	where T : struct {
 		var table = GetComponentTable<T>();
 
-		var arch = _em.GetArchetype(handle);
-		EntitiesByArchetype[arch].Remove(handle.Id);
-		table.Remove(handle.Id);
-		_em.ClearComponentBit(handle.Id, BitByType[typeof(T)]);
-		arch = _em.GetArchetype(handle);
+		Assert(_em.IsEcsEntity(handle), "Cannot remove component from non Ecs entity (%)", handle.Id);
+
+		RemoveComponent<T>(handle.Id);
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public void RemoveComponent<T>(uint id) 
+	where T : struct {
+		var table = GetComponentTable<T>();
+
+		var arch = _em.GetArchetype(id);
+		EntitiesByArchetype[arch].Remove(id);
+		table.Remove(id);
+		_em.ClearComponentBit(id, BitByType[typeof(T)]);
+		arch = _em.GetArchetype(id);
 
 		if (EntitiesByArchetype.TryGetValue(arch, out var list)) {
-			list.Add(handle.Id);
+			list.Add(id);
 		} else {
 			var elist = new List<uint>();
-			elist.Add(handle.Id);
+			elist.Add(id);
 			EntitiesByArchetype.Add(arch.Copy(), elist);
 			CleanupQueries(BitByType[typeof(T)]);
 		}
@@ -213,7 +216,14 @@ public class Ecs {
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public bool HasComponent<T>(EntityHandle handle) {
-		var arch = _em.GetArchetype(handle);
+		Assert(_em.IsEcsEntity(handle), "Cannot check component on non ecs entity (%)", handle.Id);
+
+		return HasComponent<T>(handle.Id);
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public bool HasComponent<T>(uint entity) {
+		var arch = _em.GetArchetype(entity);
 
 		return arch.TestBit(BitByType[typeof(T)]);
 	}
@@ -453,6 +463,244 @@ public class Ecs {
 		_bitsetPool.Release(mask);
 	}
 
+	public void ForEach<T>(ForEachWithEntityDelegate<T> del) 
+	where T : struct {
+		var type0 = typeof(T);
+		Assert(BitByType.ContainsKey(type0), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type0.FullName);
+		var table0 = (ComponentTable<T>)Tables[BitByType[type0]];
+
+		var c = table0.GetComponentsCount();
+		var mask = _bitsetPool.Get();
+		mask.SetBit(BitByType[type0]);
+
+		var query = Query(mask);
+
+		foreach(var arch in query.Archetypes) {
+			var list = EntitiesByArchetype[arch];
+
+			for (var i = 0; i < list.Count; i++) {
+				del.Invoke(list[i], ref table0.Get(list[i]));
+			}
+		}
+
+		_bitsetPool.Release(mask);
+	}
+
+	public void ForEach<T0, T1>(ForEachWithEntityDelegate<T0, T1> del) 
+	where T0 : struct 
+	where T1 : struct {
+		var type0 = typeof(T0);
+		Assert(BitByType.ContainsKey(type0), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type0.FullName);
+		var type1 = typeof(T1);
+		Assert(BitByType.ContainsKey(type1), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type1.FullName);
+
+		var mask = _bitsetPool.Get();
+
+		mask.SetBit(BitByType[type0]);
+		mask.SetBit(BitByType[type1]);
+
+		var query = Query(mask);
+
+		var table0 = (ComponentTable<T0>)Tables[BitByType[type0]];
+		var table1 = (ComponentTable<T1>)Tables[BitByType[type1]];
+
+		foreach(var arch in query.Archetypes) {
+			var list = EntitiesByArchetype[arch];
+
+			for (var i = 0; i < list.Count; i++) {
+				var entity = list[i];
+				del.Invoke(entity, ref table0.Get(entity), ref table1.Get(entity));
+			}
+		}
+
+		_bitsetPool.Release(mask);
+	}
+
+	public void ForEach<T0, T1, T2>(ForEachWithEntityDelegate<T0, T1, T2> del) 
+	where T0 : struct 
+	where T1 : struct 
+	where T2 : struct {
+		var type0 = typeof(T0);
+		Assert(BitByType.ContainsKey(type0), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type0.FullName);
+		var type1 = typeof(T1);
+		Assert(BitByType.ContainsKey(type1), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type1.FullName);
+		var type2 = typeof(T2);
+		Assert(BitByType.ContainsKey(type2), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type2.FullName);
+
+		var mask = _bitsetPool.Get();
+
+		mask.SetBit(BitByType[type0]);
+		mask.SetBit(BitByType[type1]);
+		mask.SetBit(BitByType[type2]);
+
+		var query = Query(mask);
+
+		var table0 = (ComponentTable<T0>)Tables[BitByType[type0]];
+		var table1 = (ComponentTable<T1>)Tables[BitByType[type1]];
+		var table2 = (ComponentTable<T2>)Tables[BitByType[type2]];
+
+		foreach(var arch in query.Archetypes) {
+			var list = EntitiesByArchetype[arch];
+
+			for (var i = 0; i < list.Count; i++) {
+				var entity = list[i];
+				del.Invoke(entity, ref table0.Get(entity), ref table1.Get(entity), ref table2.Get(entity));
+			}
+		}
+
+		_bitsetPool.Release(mask);
+	}
+
+	public void ForEach<T0, T1, T2, T3>(ForEachWithEntityDelegate<T0, T1, T2, T3> del) 
+	where T0 : struct 
+	where T1 : struct 
+	where T2 : struct 
+	where T3 : struct {
+		var type0 = typeof(T0);
+		Assert(BitByType.ContainsKey(type0), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type0.FullName);
+		var type1 = typeof(T1);
+		Assert(BitByType.ContainsKey(type1), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type1.FullName);
+		var type2 = typeof(T2);
+		Assert(BitByType.ContainsKey(type2), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type2.FullName);
+		var type3 = typeof(T3);
+		Assert(BitByType.ContainsKey(type3), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type3.FullName);
+
+		var mask = _bitsetPool.Get();
+
+		mask.SetBit(BitByType[type0]);
+		mask.SetBit(BitByType[type1]);
+		mask.SetBit(BitByType[type2]);
+		mask.SetBit(BitByType[type3]);
+
+		var query = Query(mask);
+
+		var table0 = (ComponentTable<T0>)Tables[BitByType[type0]];
+		var table1 = (ComponentTable<T1>)Tables[BitByType[type1]];
+		var table2 = (ComponentTable<T2>)Tables[BitByType[type2]];
+		var table3 = (ComponentTable<T3>)Tables[BitByType[type3]];
+
+		foreach(var arch in query.Archetypes) {
+			var list = EntitiesByArchetype[arch];
+
+			for (var i = 0; i < list.Count; i++) {
+				var entity = list[i];
+				del.Invoke(entity,
+						   ref table0.Get(entity), 
+						   ref table1.Get(entity), 
+						   ref table2.Get(entity),
+						   ref table3.Get(entity));
+			}
+		}
+
+		_bitsetPool.Release(mask);
+	}
+
+	public void ForEach<T0, T1, T2, T3, T4>(ForEachWithEntityDelegate<T0, T1, T2, T3, T4> del) 
+	where T0 : struct 
+	where T1 : struct 
+	where T2 : struct 
+	where T3 : struct 
+	where T4 : struct {
+		var type0 = typeof(T0);
+		Assert(BitByType.ContainsKey(type0), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type0.FullName);
+		var type1 = typeof(T1);
+		Assert(BitByType.ContainsKey(type1), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type1.FullName);
+		var type2 = typeof(T2);
+		Assert(BitByType.ContainsKey(type2), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type2.FullName);
+		var type3 = typeof(T3);
+		Assert(BitByType.ContainsKey(type3), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type3.FullName);
+		var type4 = typeof(T4);
+		Assert(BitByType.ContainsKey(type4), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type4.FullName);
+
+		var mask = _bitsetPool.Get();
+
+		mask.SetBit(BitByType[type0]);
+		mask.SetBit(BitByType[type1]);
+		mask.SetBit(BitByType[type2]);
+		mask.SetBit(BitByType[type3]);
+		mask.SetBit(BitByType[type4]);
+
+		var query = Query(mask);
+
+		var table0 = (ComponentTable<T0>)Tables[BitByType[type0]];
+		var table1 = (ComponentTable<T1>)Tables[BitByType[type1]];
+		var table2 = (ComponentTable<T2>)Tables[BitByType[type2]];
+		var table3 = (ComponentTable<T3>)Tables[BitByType[type3]];
+		var table4 = (ComponentTable<T4>)Tables[BitByType[type4]];
+
+		foreach(var arch in query.Archetypes) {
+			var list = EntitiesByArchetype[arch];
+
+			for (var i = 0; i < list.Count; i++) {
+				var entity = list[i];
+				del.Invoke(entity,
+						   ref table0.Get(entity), 
+						   ref table1.Get(entity), 
+						   ref table2.Get(entity),
+						   ref table3.Get(entity),
+						   ref table4.Get(entity));
+			}
+		}
+
+		_bitsetPool.Release(mask);
+	}
+
+	public void ForEach<T0, T1, T2, T3, T4, T5>(ForEachWithEntityDelegate<T0, T1, T2, T3, T4, T5> del) 
+	where T0 : struct 
+	where T1 : struct 
+	where T2 : struct 
+	where T3 : struct 
+	where T4 : struct 
+	where T5 : struct {
+		var type0 = typeof(T0);
+		Assert(BitByType.ContainsKey(type0), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type0.FullName);
+		var type1 = typeof(T1);
+		Assert(BitByType.ContainsKey(type1), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type1.FullName);
+		var type2 = typeof(T2);
+		Assert(BitByType.ContainsKey(type2), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type2.FullName);
+		var type3 = typeof(T3);
+		Assert(BitByType.ContainsKey(type3), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type3.FullName);
+		var type4 = typeof(T4);
+		Assert(BitByType.ContainsKey(type4), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type4.FullName);
+		var type5 = typeof(T5);
+		Assert(BitByType.ContainsKey(type4), "There is no corresponding table for type %. Did you mark your component with ComponentAttribute?", type5.FullName);
+
+		var mask = _bitsetPool.Get();
+
+		mask.SetBit(BitByType[type0]);
+		mask.SetBit(BitByType[type1]);
+		mask.SetBit(BitByType[type2]);
+		mask.SetBit(BitByType[type3]);
+		mask.SetBit(BitByType[type4]);
+		mask.SetBit(BitByType[type5]);
+
+		var query = Query(mask);
+
+		var table0 = (ComponentTable<T0>)Tables[BitByType[type0]];
+		var table1 = (ComponentTable<T1>)Tables[BitByType[type1]];
+		var table2 = (ComponentTable<T2>)Tables[BitByType[type2]];
+		var table3 = (ComponentTable<T3>)Tables[BitByType[type3]];
+		var table4 = (ComponentTable<T4>)Tables[BitByType[type4]];
+		var table5 = (ComponentTable<T5>)Tables[BitByType[type5]];
+
+		foreach(var arch in query.Archetypes) {
+			var list = EntitiesByArchetype[arch];
+
+			for (var i = 0; i < list.Count; i++) {
+				var entity = list[i];
+				del.Invoke(entity,
+					 	   ref table0.Get(entity), 
+						   ref table1.Get(entity), 
+						   ref table2.Get(entity),
+						   ref table3.Get(entity),
+						   ref table4.Get(entity),
+						   ref table5.Get(entity));
+			}
+		}
+
+		_bitsetPool.Release(mask);
+	}
+
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private QueryResult Query(BitSet mask) {
 		if (QueryCache.ContainsKey(mask) == false) {
@@ -479,5 +727,11 @@ public class Ecs {
 		} else {
 			return QueryCache[mask];
 		}
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private ComponentTable<T> GetComponentTable<T>() 
+	where T : struct {
+		return (ComponentTable<T>)Tables[BitByType[typeof(T)]];
 	}
 }

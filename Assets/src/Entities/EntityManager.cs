@@ -448,8 +448,9 @@ public class EntityManager {
         var next = list.First;
 
         while (next > 0) {
+            var nxt = list.Next[next];
             yield return Entities[next];
-            next = list.Next[next];
+            next = nxt;
         }
     }
 
@@ -461,8 +462,9 @@ public class EntityManager {
         var next = list.First;
 
         while (next > 0) {
+            var nxt = list.Next[next];
             yield return (T)Entities[next];
-            next = list.Next[next];
+            next = nxt;
         }
     }
 
@@ -555,6 +557,11 @@ public class EntityManager {
         Assert(IsValid(h), "Cannot get archetype for invalid entity (%)", h.Id);
 
         return Archetypes[h.Id];
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public BitSet GetArchetype(uint h) {
+        return Archetypes[h];
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

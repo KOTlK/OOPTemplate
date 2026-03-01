@@ -26,15 +26,9 @@ public struct SceneLoadOperation {
 
 public static class AssetManager {
     public static Dictionary<AsyncOperationHandle<GameObject>, OnAsyncAssetLoad> AssetLoadingCallback;
-    public static Dictionary<AsyncOperationHandle<IList<Mesh>>, MeshLoadOperation> MeshLoading;
-    public static Dictionary<AsyncOperationHandle<IList<Material>>, MaterialLoadOperation> MaterialLoading;
+    public static Dictionary<AsyncOperationHandle<Mesh>, MeshLoadOperation> MeshLoading;
+    public static Dictionary<AsyncOperationHandle<Material>, MaterialLoadOperation> MaterialLoading;
     public static Dictionary<AsyncOperationHandle<SceneInstance>, SceneLoadOperation> SceneLoading;
-
-    public static string CurrentDetailLevel = DetailLevelHigh;
-
-    public const string DetailLevelLow  = "Low";
-    public const string DetailLevelMid  = "Mid";
-    public const string DetailLevelHigh = "High";
 
     public static void Init() {
         AssetLoadingCallback = new();
@@ -47,18 +41,8 @@ public static class AssetManager {
         SceneLoading.Clear();
     }
 
-    public static void SetCurrentDetailLevel(string level) {
-        // @TODO: Iterate over all loaded assets and load assets with new detail level.
-        CurrentDetailLevel = level;
-    }
-
     public static void LoadMeshAsync(object meshAddress, MeshFilter filter) {
-        var list = ListPool<object>.Get();
-        list.Add(meshAddress);
-        list.Add(CurrentDetailLevel);
-        var handle = Addressables.LoadAssetsAsync<Mesh>(list, null, Addressables.MergeMode.Intersection);
-
-        ListPool<object>.Release(list);
+        var handle = Addressables.LoadAssetAsync<Mesh>(meshAddress);
 
         handle.Completed += OnMeshLoaded;
 
@@ -70,12 +54,7 @@ public static class AssetManager {
     }
 
     public static void LoadMaterialAsync(object matAddress, Renderer renderer) {
-        var list = ListPool<object>.Get();
-        list.Add(matAddress);
-        list.Add(CurrentDetailLevel);
-        var handle = Addressables.LoadAssetsAsync<Material>(list, null, Addressables.MergeMode.Intersection);
-
-        ListPool<object>.Release(list);
+        var handle = Addressables.LoadAssetAsync<Material>(matAddress);
 
         handle.Completed += OnMaterialLoaded;
 
@@ -189,28 +168,26 @@ public static class AssetManager {
         AssetLoadingCallback.Remove(op);
     }
 
-    private static void OnMeshLoaded(AsyncOperationHandle<IList<Mesh>> op) {
+    private static void OnMeshLoaded(AsyncOperationHandle<Mesh> op) {
         Assert(MeshLoading.ContainsKey(op), "Cannot get operation for mesh loading");
         var operation = MeshLoading[op];
 
         Assert(op.Status == AsyncOperationStatus.Succeeded, "Mesh loading operation failed.");
-        Assert(op.Result.Count > 0, "Mesh loading operation failed, combination cannot be found.");
 
         var list = op.Result;
 
-        operation.Filter.sharedMesh = op.Result[0];
+        operation.Filter.sharedMesh = op.Result;
         Addressables.Release(op);
         MeshLoading.Remove(op);
     }
 
-    private static void OnMaterialLoaded(AsyncOperationHandle<IList<Material>> op) {
+    private static void OnMaterialLoaded(AsyncOperationHandle<Material> op) {
         Assert(MaterialLoading.ContainsKey(op), "Cannot get operation for mesh loading");
         var operation = MaterialLoading[op];
 
         Assert(op.Status == AsyncOperationStatus.Succeeded, "Mesh loading operation failed.");
-        Assert(op.Result.Count > 0, "Mesh loading operation failed, combination cannot be found.");
 
-        operation.Renderer.material = op.Result[0];
+        operation.Renderer.material = op.Result;
         Addressables.Release(op);
         MaterialLoading.Remove(op);
     }
