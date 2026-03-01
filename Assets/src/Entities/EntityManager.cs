@@ -188,6 +188,14 @@ public class EntityManager {
             entity.OnBecameDynamic();
         }
 
+        if((entity.Flags & EntityFlags.Ecs) == EntityFlags.Ecs) {
+            if (Archetypes[id].Allocated) {
+                Archetypes[id].ClearAll();
+            } else {
+                Archetypes[id] = new (Ecs.ComponentsCount);
+            }
+        }
+
         entity.OnBaking();
     }
 
@@ -225,6 +233,14 @@ public class EntityManager {
         if((obj.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             AddDynamic(id);
             obj.OnBecameDynamic();
+        }
+
+        if((obj.Flags & EntityFlags.Ecs) == EntityFlags.Ecs) {
+            if (Archetypes[id].Allocated) {
+                Archetypes[id].ClearAll();
+            } else {
+                Archetypes[id] = new (Ecs.ComponentsCount);
+            }
         }
 
         var container = SceneManager.GetActiveScene().GetSceneContainer();
@@ -275,6 +291,14 @@ public class EntityManager {
         if((e.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             AddDynamic(id);
             e.OnBecameDynamic();
+        }
+
+        if((e.Flags & EntityFlags.Ecs) == EntityFlags.Ecs) {
+            if (Archetypes[id].Allocated) {
+                Archetypes[id].ClearAll();
+            } else {
+                Archetypes[id] = new (Ecs.ComponentsCount);
+            }
         }
 
         var container = SceneManager.GetActiveScene().GetSceneContainer();
