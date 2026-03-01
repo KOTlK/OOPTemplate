@@ -6,16 +6,9 @@ using UnityEngine.SceneManagement;
 using Reflex.Injectors;
 using Reflex.Extensions;
 
-using static ArrayUtils;
+using static Assertions;
 
-[Serializable]
-public struct PackedEntity {
-    [DontSave] public Entity        Entity;
-               public EntityType    Type;
-               public uint          Tag; // Slot's generational index
-               public bool          Alive;
-}
-
+[System.Serializable]
 public struct EntityHandle {
     public uint Id;
     public uint Tag;
@@ -48,49 +41,67 @@ public class EntityManager {
 
     public event Action<FlagsChange> EntityFlagsChanged = delegate {};
 
-    public List<Entity>                                 BakedEntities = new();
-    public Dictionary<EntityType, List<EntityHandle>>   EntitiesByType = new();
-    public PackedEntity[]                               Entities = new PackedEntity[128];
-    public List<uint>                                   DynamicEntities = new();
-    public uint[]                                       RemoveQueue = new uint[128];
-    public uint[]                                       FreeEntities = new uint[128];
-    [HideInInspector]
-    public uint                                         MaxEntitiesCount = 1;
-    [HideInInspector]
-    public uint                                         FreeEntitiesCount;
-    public uint                                         EntitiesToRemoveCount;
+    public Dictionary<EntityType, IntrusiveList> EntitiesByType = new();
+    public List<Entity>  BakedEntities = new();
+    public Entity[]      Entities = new Entity[128];
+    public EntityType[]  Types = new EntityType[128];
+    public EntityFlags[] Flags = new EntityFlags[128];
+    public uint[]        Tags = new uint[128];
+    public BitSet[]      Archetypes = new BitSet[128];
+    public bool[]        Free = new bool[128];
+    public uint[]        NextFree = new uint[128];
+    public uint[]        NextDynamic = new uint[128];
+    public uint[]        PrevDynamic = new uint[128];
+
+    [HideInInspector] public uint MaxEntitiesCount = 1;
+    [ReadOnly]        public uint FirstFree;
+    [ReadOnly]        public uint FirstDynamic;
+
+    public Ecs Ecs;
 
     public EntityManager() {
         BakedEntities.Clear();
         EntitiesByType.Clear();
-        DynamicEntities.Clear();
         MaxEntitiesCount = 1;
-        FreeEntitiesCount = 0;
-        EntitiesToRemoveCount = 0;
+        FirstFree = 0;
+        FirstDynamic = 0;
         var entityTypes = Enum.GetValues(typeof(EntityType));
 
         foreach(var type in entityTypes) {
-            EntitiesByType.Add((EntityType)type, new List<EntityHandle>());
+            EntitiesByType.Add((EntityType)type, new IntrusiveList(128));
         }
 
         EntityFlagsChanged += CheckDynamicOnFlagsChange;
+        EntityFlagsChanged += OnEcsFlagChange;
+
+        foreach(var bitset in Archetypes) {
+            bitset.ClearAll();
+        }
+
+        for (var i = 0; i < 128; i++) {
+            Free[i] = true;
+        }
     }
 
     public void Save(BinarySaveFile sf) {
         sf.Write(MaxEntitiesCount);
         for(uint i = 1; i < MaxEntitiesCount; ++i) {
             sf.Write(Entities[i].Type);
-            sf.Write(Entities[i].Tag);
-            sf.Write(Entities[i].Alive);
+            sf.Write(Tags[i]);
+            sf.Write(Free[i]);
+            sf.Write(Flags[i]);
 
-            if (Entities[i].Alive && Entities[i].Entity != null) {
-                var entity = Entities[i].Entity;
+            if (Free[i] == false && Entities[i] != null) {
+                var entity = Entities[i];
                 sf.Write(entity.AssetAddress);
                 sf.Write(entity.Position);
                 sf.Write(entity.Rotation);
                 sf.Write(entity.Scale);
                 sf.Write(entity.Type);
-                sf.Write(entity.Flags);
+                if ((entity.Flags & EntityFlags.Ecs) == EntityFlags.Ecs ||
+                    (entity.Flags & EntityFlags.EcsOnly) == EntityFlags.EcsOnly) {
+                    sf.Write(Archetypes[i]);
+                }
                 sf.Write(entity);
             }
         }
@@ -98,38 +109,44 @@ public class EntityManager {
 
     public void Load(BinarySaveFile sf) {
         // Clear everything
-        for(uint i = 0; i < MaxEntitiesCount; ++i) {
-            DestroyEntityImmediate(i);
-        }
-
-        MaxEntitiesCount      = 1;
-        FreeEntitiesCount     = 0;
-        EntitiesToRemoveCount = 0;
-        DynamicEntities.Clear();
+        DestroyAllEntities();
 
         var entitiesCount = sf.Read<uint>();
-        Entities          = new PackedEntity[entitiesCount];
+        if (Entities.Length < entitiesCount) {
+            Resize(entitiesCount + 128);
+        }
+
         for(uint i = 1; i < entitiesCount; ++i) {
-            var pe = new PackedEntity();
+            Entities[i] = null;
+            Types[i]    = sf.Read<EntityType>();
+            Tags[i]     = sf.Read<uint>();
+            Free[i]     = sf.Read<bool>();
+            Flags[i]    = sf.Read<EntityFlags>();
 
-            pe.Entity = null;
-            pe.Type   = sf.Read<EntityType>();
-            pe.Tag    = sf.Read<uint>();
-            pe.Alive  = sf.Read<bool>();
+            if (Free[i] == false) {
+                var asset = sf.Read<string>();
+                var pos   = sf.Read<Vector3>();
+                var rot   = sf.Read<Quaternion>();
+                var scale = sf.Read<Vector3>();
+                var type  = sf.Read<EntityType>();
 
-            if (pe.Alive) {
-                pe.Entity = RecreateEntity(sf.Read<string>(),
-                                           sf.Read<Vector3>(),
-                                           sf.Read<Quaternion>(),
-                                           sf.Read<Vector3>(),
-                                           sf.Read<EntityType>(),
-                                           sf.Read<EntityFlags>());
-                sf.Read(pe.Entity);
+                Entities[i] = RecreateEntity(asset,
+                                             pos,
+                                             rot,
+                                             scale,
+                                             type,
+                                             Flags[i]);
+
+                if ((Flags[i] & EntityFlags.Ecs) == EntityFlags.Ecs ||
+                    (Flags[i] & EntityFlags.EcsOnly) == EntityFlags.EcsOnly) {
+                    Archetypes[i] = sf.Read<BitSet>();
+                }
+
+                sf.Read(Entities[i]);
+                Entities[i].Flags = Flags[i];
             } else {
                 PushEmptyEntity(i);
             }
-
-            Entities[i] = pe;
         }
     }
 
@@ -142,13 +159,9 @@ public class EntityManager {
     }
 
     public void BakeEntity(Entity entity) {
-        uint id;
-        if(FreeEntitiesCount > 0){
-            id = FreeEntities[--FreeEntitiesCount];
-        }else{
-            id = MaxEntitiesCount++;
-        }
-        uint tag = Entities[id].Tag;
+        uint id = GetNextFree();
+
+        uint tag = Tags[id];
 
         var handle = new EntityHandle {
             Id = id,
@@ -156,22 +169,31 @@ public class EntityManager {
         };
 
         if(MaxEntitiesCount == Entities.Length) {
-            Resize(ref Entities, MaxEntitiesCount << 1);
+            Resize(MaxEntitiesCount << 1);
         }
 
-        Entities[id].Entity  = entity;
-        Entities[id].Alive   = true;
-        Entities[id].Type    = entity.Type;
-        Entities[id].Tag     = tag;
+        Entities[id] = entity;
+        Free[id]     = false;
+        Types[id]    = entity.Type;
+        Tags[id]     = tag;
+        Flags[id]    = entity.Flags;
 
         entity.Handle      = handle;
         entity.Em          = this;
 
-        EntitiesByType[entity.Type].Add(handle);
+        EntitiesByType[entity.Type].Add(handle.Id);
 
         if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
-            DynamicEntities.Add(id);
+            AddDynamic(id);
             entity.OnBecameDynamic();
+        }
+
+        if((entity.Flags & EntityFlags.Ecs) == EntityFlags.Ecs) {
+            if (Archetypes[id].Allocated) {
+                Archetypes[id].ClearAll();
+            } else {
+                Archetypes[id] = new (Ecs.ComponentsCount);
+            }
         }
 
         entity.OnBaking();
@@ -182,15 +204,9 @@ public class EntityManager {
                                              Quaternion orientation,
                                              Transform  parent = null)
     where T : Entity {
-        uint id;
+        uint id = GetNextFree();
 
-        if(FreeEntitiesCount > 0) {
-            id = FreeEntities[--FreeEntitiesCount];
-        }else{
-            id = MaxEntitiesCount++;
-        }
-
-        uint tag = Entities[id].Tag;
+        uint tag = Tags[id];
 
         var handle = new EntityHandle {
             Id = id,
@@ -200,22 +216,31 @@ public class EntityManager {
         var obj = AssetManager.Instantiate<T>(prefab, position, orientation, parent);
 
         if(MaxEntitiesCount == Entities.Length) {
-            Resize(ref Entities, MaxEntitiesCount << 1);
+            Resize(MaxEntitiesCount << 1);
         }
 
-        Entities[id].Entity  = obj;
-        Entities[id].Alive   = true;
-        Entities[id].Type    = obj.Type;
-        Entities[id].Tag     = tag;
+        Entities[id] = obj;
+        Free[id]     = false;
+        Types[id]    = obj.Type;
+        Tags[id]     = tag;
+        Flags[id]    = obj.Flags;
 
         obj.Handle      = handle;
         obj.Em          = this;
 
-        EntitiesByType[obj.Type].Add(handle);
+        EntitiesByType[obj.Type].Add(handle.Id);
 
         if((obj.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
-            DynamicEntities.Add(id);
+            AddDynamic(id);
             obj.OnBecameDynamic();
+        }
+
+        if((obj.Flags & EntityFlags.Ecs) == EntityFlags.Ecs) {
+            if (Archetypes[id].Allocated) {
+                Archetypes[id].ClearAll();
+            } else {
+                Archetypes[id] = new (Ecs.ComponentsCount);
+            }
         }
 
         var container = SceneManager.GetActiveScene().GetSceneContainer();
@@ -226,8 +251,9 @@ public class EntityManager {
     }
 
     public void PushEmptyEntity(uint id) {
-        FreeEntities[FreeEntitiesCount++] = id;
-        Entities[id].Alive   = false;
+        Free[id] = true;
+        NextFree[id] = FirstFree;
+        FirstFree = id;
         MaxEntitiesCount++;
     }
 
@@ -242,28 +268,37 @@ public class EntityManager {
 
         uint id = MaxEntitiesCount++;
 
-        if(MaxEntitiesCount == Entities.Length) {
-            Resize(ref Entities, MaxEntitiesCount << 1);
+        if(MaxEntitiesCount >= Entities.Length) {
+            Resize(MaxEntitiesCount << 1);
         }
         var handle = new EntityHandle {
             Id = id,
-            Tag = Entities[id].Tag
+            Tag = Tags[id]
         };
 
-        Entities[id].Entity  = e;
-        Entities[id].Alive   = true;
-        Entities[id].Type    = type;
+        Entities[id] = e;
+        Free[id]     = false;
+        Types[id]    = type;
+        Flags[id]    = e.Flags;
 
         e.Handle = handle;
         e.Em     = this;
         e.Type   = type;
         e.Flags  = flags;
 
-        EntitiesByType[e.Type].Add(handle);
+        EntitiesByType[e.Type].Add(handle.Id);
 
         if((e.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
-            DynamicEntities.Add(id);
+            AddDynamic(id);
             e.OnBecameDynamic();
+        }
+
+        if((e.Flags & EntityFlags.Ecs) == EntityFlags.Ecs) {
+            if (Archetypes[id].Allocated) {
+                Archetypes[id].ClearAll();
+            } else {
+                Archetypes[id] = new (Ecs.ComponentsCount);
+            }
         }
 
         var container = SceneManager.GetActiveScene().GetSceneContainer();
@@ -274,69 +309,101 @@ public class EntityManager {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void DestroyEntity(EntityHandle handle) {
-        if(EntitiesToRemoveCount == RemoveQueue.Length) {
-            Resize(ref RemoveQueue, EntitiesToRemoveCount << 1);
-        }
+    public EntityHandle CreatePureEcsEntity() {
+        uint id = GetNextFree();
+        uint tag = Tags[id];
 
-        if(IsValid(handle)) {
-            Entities[handle.Id].Alive = false;
-            RemoveQueue[EntitiesToRemoveCount++] = handle.Id;
-        }
+        Flags[id] = EntityFlags.EcsOnly;
+        Free[id] = false;
+
+        var handle = new EntityHandle {
+            Id = id,
+            Tag = tag
+        };
+
+        return handle;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void DestroyEntityImmediate(uint id) {
-        var entity = Entities[id].Entity;
+    public void DestroyEntity(EntityHandle handle, bool calledFromEcs = false) {
+        if (IsValid(handle)) {
+            Free[handle.Id] = true;
+            if ((Flags[handle.Id] & EntityFlags.EcsOnly) == EntityFlags.EcsOnly) {
+                if (!calledFromEcs) {
+                    Ecs.ClearComponents(handle);
+                }
+                NextFree[handle.Id] = FirstFree;
+                FirstFree = handle.Id;
+                Tags[handle.Id]++;
+                Archetypes[handle.Id].ClearAll();
+                return;
+            }
+            var id = handle.Id;
 
-        if(entity != null) {
-            if(FreeEntitiesCount == FreeEntities.Length) {
-                Resize(ref FreeEntities, FreeEntitiesCount << 1);
+            if ((Flags[id] & EntityFlags.Ecs) == EntityFlags.Ecs) {
+                if (!calledFromEcs) {
+                    Ecs.ClearComponents(handle);
+                }
+                Archetypes[id].ClearAll();
             }
 
-            EntitiesByType[entity.Type].Remove(GetHandle(id));
-
-            if((entity.Flags & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
-                DynamicEntities.Remove(id);
+            if ((Flags[id] & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
+                RemoveDynamic(id);
             }
 
-            Entities[id].Entity = null;
+            var entity = Entities[handle.Id];
+
+            Assert(entity, "Cannot destroy null entity (%)", id);
+
+            EntitiesByType[entity.Type].Remove(handle.Id);
+            Entities[id] = null;
             entity.Destroy();
             UnityEngine.Object.Destroy(entity.gameObject);
-            FreeEntities[FreeEntitiesCount++] = id;
-            Entities[id].Tag++;
+            NextFree[id] = FirstFree;
+            FirstFree = id;
+            Tags[id]++;
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void DestroyAllEntities() {
-        for(uint i = 0; i < MaxEntitiesCount; ++i) {
-            DestroyEntityImmediate(i);
+        for (uint i = 0; i < Entities.Length; i++) {
+            if (Free[i] == false) {
+                DestroyEntity(GetHandle(i));
+            }
+
+            Types[i] = EntityType.None;
+            Flags[i] = EntityFlags.None;
+            Tags[i]  = 0;
+            if (Archetypes[i].Allocated) {
+                Archetypes[i].ClearAll();
+            }
+            Free[i]        = true;
+            NextFree[i]    = 0;
+            NextDynamic[i] = 0;
+            PrevDynamic[i] = 0;
         }
 
-        MaxEntitiesCount      = 1;
-        FreeEntitiesCount     = 0;
-        EntitiesToRemoveCount = 0;
-        DynamicEntities.Clear();
+        MaxEntitiesCount = 1;
+        FirstDynamic     = 0;
+        FirstFree        = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Update() {
-        for(var i = 0; i < EntitiesToRemoveCount; ++i) {
-            DestroyEntityImmediate(RemoveQueue[i]);
-        }
-        EntitiesToRemoveCount = 0;
+        var next = FirstDynamic;
 
-
-        for(var i = 0; i < DynamicEntities.Count; ++i) {
-            Entities[DynamicEntities[i]].Entity.UpdateEntity();
+        while(next > 0) {
+            var current = next;
+            next = NextDynamic[next];
+            Entities[current].UpdateEntity();
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool GetEntity(EntityHandle handle, out Entity e) {
         if(IsValid(handle)) {
-            e = Entities[handle.Id].Entity;
+            e = Entities[handle.Id];
             return true;
         } else {
             e = null;
@@ -348,7 +415,7 @@ public class EntityManager {
     public bool GetEntity<T>(EntityHandle handle, out T e)
     where T : Entity {
         if(IsValid(handle)) {
-            e = (T)Entities[handle.Id].Entity;
+            e = (T)Entities[handle.Id];
             return true;
         } else {
             e = null;
@@ -360,64 +427,73 @@ public class EntityManager {
     public EntityHandle GetHandle(uint id) {
         return new EntityHandle {
             Id = id,
-            Tag = Entities[id].Tag
+            Tag = Tags[id]
         };
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsAlive(EntityHandle handle) {
-        return IsValid(handle) && Entities[handle.Id].Alive;
+        return IsValid(handle) && Free[handle.Id] == false;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsValid(EntityHandle handle) {
-        return handle != EntityHandle.Zero && handle.Tag == Entities[handle.Id].Tag;
+        return handle != EntityHandle.Zero && handle.Tag == Tags[handle.Id];
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IEnumerable<Entity> GetAllEntitiesWithType(EntityType type) {
-        for(var i = 0; i < MaxEntitiesCount; ++i) {
-            if(Entities[i].Type == type && Entities[i].Alive) {
-                yield return Entities[i].Entity;
-            }
+        var list = EntitiesByType[type];
+
+        var next = list.First;
+
+        while (next > 0) {
+            yield return Entities[next];
+            next = list.Next[next];
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IEnumerable<T> GetAllEntitiesWithType<T>(EntityType type)
     where T : Entity {
-        for(var i = 0; i < MaxEntitiesCount; ++i) {
-            if(Entities[i].Type == type && Entities[i].Alive) {
-                yield return (T)Entities[i].Entity;
-            }
+        var list = EntitiesByType[type];
+
+        var next = list.First;
+
+        while (next > 0) {
+            yield return (T)Entities[next];
+            next = list.Next[next];
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetFlags(EntityHandle handle, EntityFlags flags) {
+        Assert((flags & EntityFlags.EcsOnly) != EntityFlags.EcsOnly, "Cannot change EcsOnly flag on already created entity, use Ecs flag instead.");
         if (!GetEntity(handle, out var entity)) return;
 
         var change = new FlagsChange();
 
-        change.Old    = entity.Flags;
-        change.New    = flags;
-        change.Entity = entity;
-
-        entity.Flags = flags;
+        change.Old       = Flags[handle.Id];
+        change.New       = flags;
+        change.Entity    = entity;
+        entity.Flags     = flags;
+        Flags[handle.Id] = flags;
 
         EntityFlagsChanged(change);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetFlag(EntityHandle handle, EntityFlags flag) {
+        Assert(flag != EntityFlags.EcsOnly, "Cannot change EcsOnly flag on already created entity, use Ecs flag instead.");
         if (!GetEntity(handle, out var entity)) return;
 
-        if ((entity.Flags & flag) != flag) {
-            var change    = new FlagsChange();
-            change.Old    = entity.Flags;
-            entity.Flags |= flag;
-            change.New    = entity.Flags;
-            change.Entity = entity;
+        if ((Flags[handle.Id] & flag) != flag) {
+            var change        = new FlagsChange();
+            change.Old        = Flags[handle.Id];
+            entity.Flags     |= flag;
+            Flags[handle.Id] |= flag;
+            change.New        = Flags[handle.Id];
+            change.Entity     = entity;
 
             EntityFlagsChanged(change);
         }
@@ -425,14 +501,16 @@ public class EntityManager {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ClearFlag(EntityHandle handle, EntityFlags flag) {
+        Assert(flag != EntityFlags.EcsOnly, "Cannot change EcsOnly flag on already created entity, use Ecs flag instead.");
         if (!GetEntity(handle, out var entity)) return;
 
-        if ((entity.Flags & flag) == flag) {
-            var change    = new FlagsChange();
-            change.Old    = entity.Flags;
-            entity.Flags &= ~flag;
-            change.New    = entity.Flags;
-            change.Entity = entity;
+        if ((Flags[handle.Id] & flag) == flag) {
+            var change        = new FlagsChange();
+            change.Old        = Flags[handle.Id];
+            entity.Flags     &= ~flag;
+            Flags[handle.Id] &= ~flag;
+            change.New        = Flags[handle.Id];
+            change.Entity     = entity;
 
             EntityFlagsChanged(change);
         }
@@ -440,15 +518,57 @@ public class EntityManager {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ToggleFlag(EntityHandle handle, EntityFlags flag) {
+        Assert(flag != EntityFlags.EcsOnly, "Cannot change EcsOnly flag on already created entity, use Ecs flag instead.");
         if (!GetEntity(handle, out var entity)) return;
 
         var change    = new FlagsChange();
-        change.Old    = entity.Flags;
-        entity.Flags ^= flag;
-        change.New    = entity.Flags;
-        change.Entity = entity;
+        change.Old        = Flags[handle.Id];
+        entity.Flags     ^= flag;
+        Flags[handle.Id] ^= flag;
+        change.New        = Flags[handle.Id];
+        change.Entity     = entity;
 
         EntityFlagsChanged(change);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool IsEcsEntity(EntityHandle h) {
+        if (!IsValid(h)) return false;
+
+        return ((Flags[h.Id] & EntityFlags.Ecs) == EntityFlags.Ecs) ||
+               ((Flags[h.Id] & EntityFlags.EcsOnly) == EntityFlags.EcsOnly);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void MakeEmptyBitset(EntityHandle h, uint componentsCount) {
+        if (IsValid(h)) {
+            if (Archetypes[h.Id].Allocated) {
+                Archetypes[h.Id].ClearAll();
+            } else {
+                Archetypes[h.Id] = new(componentsCount);
+            }
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public BitSet GetArchetype(EntityHandle h) {
+        Assert(IsValid(h), "Cannot get archetype for invalid entity (%)", h.Id);
+
+        return Archetypes[h.Id];
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SetComponentBit(uint h, uint b) {
+        Assert(Free[h] == false, "Cannot set component bit for dead entity (%)", h);
+
+        Archetypes[h].SetBit(b);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ClearComponentBit(uint h, uint b) {
+        Assert(Free[h] == false, "Cannot clear component bit for dead entity (%)", h);
+
+        Archetypes[h].ClearBit(b);
     }
 
     private void CheckDynamicOnFlagsChange(FlagsChange change) {
@@ -457,7 +577,7 @@ public class EntityManager {
             (change.New & EntityFlags.Dynamic) != EntityFlags.Dynamic) {
             var id = change.Entity.Handle.Id;
 
-            DynamicEntities.Remove(id);
+            RemoveDynamic(id);
             change.Entity.OnBecameStatic();
         } 
         // if dynamic flag was added
@@ -465,8 +585,84 @@ public class EntityManager {
                  (change.New & EntityFlags.Dynamic) == EntityFlags.Dynamic) {
             var id = change.Entity.Handle.Id;
 
-            DynamicEntities.Add(id);
+            AddDynamic(id);
             change.Entity.OnBecameDynamic();
         }
+    }
+
+    private void OnEcsFlagChange(FlagsChange change) {
+        // if ecs flag was removed
+        if ((change.Old & EntityFlags.Ecs) == EntityFlags.Ecs &&
+            (change.New & EntityFlags.Ecs) != EntityFlags.Ecs) {
+            var id = change.Entity.Handle.Id;
+
+            Ecs.ClearComponents(change.Entity.Handle);
+            Archetypes[id].ClearAll();
+        } 
+        // if ecs flag was added
+        else if ((change.Old & EntityFlags.Ecs) != EntityFlags.Ecs &&
+                 (change.New & EntityFlags.Ecs) == EntityFlags.Ecs) {
+            MakeEmptyBitset(change.Entity.Handle, Ecs.ComponentsCount);
+        }
+    }
+
+    private void Resize(uint newSize) {
+        var ns = (int)newSize; // fuck you c#;
+        Array.Resize(ref Entities, ns);
+        Array.Resize(ref Types, ns);
+        Array.Resize(ref Flags, ns);
+        Array.Resize(ref Tags, ns);
+        Array.Resize(ref Free, ns);
+        Array.Resize(ref NextFree, ns);
+        Array.Resize(ref NextDynamic, ns);
+        Array.Resize(ref PrevDynamic, ns);
+        Array.Resize(ref Archetypes, ns);
+        foreach(var (_, list) in EntitiesByType) {
+            list.Resize(newSize);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private uint GetNextFree() {
+        uint id;
+        if (FirstFree > 0) {
+            id = FirstFree;
+            FirstFree = NextFree[id];
+            return id;
+        }
+
+        id = MaxEntitiesCount++;
+        
+        if (id >= Entities.Length) {
+            Resize(id + 128);
+        }
+
+        return id;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void AddDynamic(uint id) {
+        NextDynamic[id] = FirstDynamic;
+        PrevDynamic[FirstDynamic] = id;
+        FirstDynamic = id;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void RemoveDynamic(uint id) {
+        var prev = PrevDynamic[id];
+        var next = NextDynamic[id];
+
+        if (FirstDynamic == id) {
+            FirstDynamic = next;
+        } else {
+            NextDynamic[prev] = next;
+        }
+
+        if (next > 0) {
+            PrevDynamic[next] = prev;
+        }
+
+        NextDynamic[id] = 0;
+        PrevDynamic[id] = 0;
     }
 }

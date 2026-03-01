@@ -1,23 +1,14 @@
 using UnityEngine;
-using System;
 using System.Runtime.CompilerServices;
 using Reflex.Attributes;
 
-// Unity can't serialize 64 bit flags... What a joke.
-[Flags]
-public enum EntityFlags : uint {
-    None            = 0,
-    Dynamic         = 0x1,
-    Temp            = 0x2, // Replace it with new flag. Do not remove it, because Unity will fuck everything up.
-}
-
 public class Entity : MonoBehaviour {
+    [ReadOnly][DontSave] public EntityHandle  Handle;
     [ReadOnly] public string        AssetAddress;
-               public EntityFlags   Flags;
-               public EntityType    Type;
-    [DontSave] public EntityHandle  Handle;
-    [DontSave] public bool          AutoBake;
     [DontSave] public EntityManager Em;
+               public EntityType    Type;
+               public EntityFlags   Flags;
+    [DontSave] public bool          AutoBake;
 
     public Vector3 Position {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -46,7 +37,7 @@ public class Entity : MonoBehaviour {
     }
 
     [Inject]
-    protected virtual void Inject(EntityManager em) {
+    private void Inject(EntityManager em) {
         if (AutoBake) {
             em.BakeEntity(this);
         }
