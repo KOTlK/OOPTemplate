@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 using static Assertions;
@@ -292,15 +293,15 @@ public class Lexer {
                                 str.EndsWith('L')
                                 ) {
                                 var num = str.Substring(0, str.Length - 2);
-                                var f   = float.Parse(num);
+                                var f   = float.Parse(num, CultureInfo.InvariantCulture);
                                 token.Value = new() {FPoint = f};
                             } else {
-                                var f   = float.Parse(str);
+                                var f   = float.Parse(str, CultureInfo.InvariantCulture);
                                 token.Value = new() {FPoint = f};
                             }
                         } else {
                             token.Type = (ushort)TokenType.IntLiteral;
-                            var i = ulong.Parse(str);
+                            var i = ulong.Parse(str, CultureInfo.InvariantCulture);
                             token.Value = new() {Integer = i};
                         }
 

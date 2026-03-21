@@ -43,21 +43,24 @@ public class EntityManager {
 
     public Dictionary<EntityType, IntrusiveList> EntitiesByType = new();
     public List<Entity>  BakedEntities = new();
-    public Entity[]      Entities = new Entity[128];
-    public EntityType[]  Types = new EntityType[128];
-    public EntityFlags[] Flags = new EntityFlags[128];
-    public uint[]        Tags = new uint[128];
-    public BitSet[]      Archetypes = new BitSet[128];
-    public bool[]        Free = new bool[128];
-    public uint[]        NextFree = new uint[128];
-    public uint[]        NextDynamic = new uint[128];
-    public uint[]        PrevDynamic = new uint[128];
+    public Entity[]      Entities = new Entity[InitialCapacity];
+    public EntityType[]  Types = new EntityType[InitialCapacity];
+    public EntityFlags[] Flags = new EntityFlags[InitialCapacity];
+    public uint[]        Tags = new uint[InitialCapacity];
+    public BitSet[]      Archetypes = new BitSet[InitialCapacity];
+    public bool[]        Free = new bool[InitialCapacity];
+    public uint[]        NextFree = new uint[InitialCapacity];
+    public uint[]        NextDynamic = new uint[InitialCapacity];
+    public uint[]        PrevDynamic = new uint[InitialCapacity];
 
     [HideInInspector] public uint MaxEntitiesCount = 1;
     [ReadOnly]        public uint FirstFree;
     [ReadOnly]        public uint FirstDynamic;
 
     public Ecs Ecs;
+
+    private const uint InitialCapacity = 1024;
+    private const uint ResizeStep      = 1024;
 
     public EntityManager() {
         BakedEntities.Clear();
@@ -68,7 +71,7 @@ public class EntityManager {
         var entityTypes = Enum.GetValues(typeof(EntityType));
 
         foreach(var type in entityTypes) {
-            EntitiesByType.Add((EntityType)type, new IntrusiveList(128));
+            EntitiesByType.Add((EntityType)type, new IntrusiveList(InitialCapacity));
         }
 
         EntityFlagsChanged += CheckDynamicOnFlagsChange;
@@ -78,7 +81,7 @@ public class EntityManager {
             bitset.ClearAll();
         }
 
-        for (var i = 0; i < 128; i++) {
+        for (var i = 0; i < InitialCapacity; i++) {
             Free[i] = true;
         }
     }
@@ -113,7 +116,7 @@ public class EntityManager {
 
         var entitiesCount = sf.Read<uint>();
         if (Entities.Length < entitiesCount) {
-            Resize(entitiesCount + 128);
+            Resize(entitiesCount + ResizeStep);
         }
 
         for(uint i = 1; i < entitiesCount; ++i) {
@@ -641,7 +644,7 @@ public class EntityManager {
         id = MaxEntitiesCount++;
         
         if (id >= Entities.Length) {
-            Resize(id + 128);
+            Resize(id + ResizeStep);
         }
 
         return id;
