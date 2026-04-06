@@ -24,7 +24,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-
+          
       - uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -32,6 +32,8 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: WebGL
+          unityVersion: 6000.3.4f1
+          buildMethod: BuildScript.BuildWithAddressables
           allowDirtyBuild: true
 
       - uses: game-ci/unity-builder@v4
@@ -41,6 +43,8 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: Android
+          unityVersion: 6000.3.4f1
+          buildMethod: BuildScript.BuildWithAddressables
           allowDirtyBuild: true
 
       - uses: game-ci/unity-builder@v4
@@ -50,6 +54,8 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: iOS
+          unityVersion: 6000.3.4f1
+          buildMethod: BuildScript.BuildWithAddressables
           allowDirtyBuild: true
 
       - uses: game-ci/unity-builder@v4
@@ -59,6 +65,8 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: StandaloneWindows64
+          unityVersion: 6000.3.4f1
+          buildMethod: BuildScript.BuildWithAddressables
           allowDirtyBuild: true
 
       - uses: actions/upload-artifact@v4
